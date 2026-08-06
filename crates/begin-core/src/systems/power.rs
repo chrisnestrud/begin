@@ -132,6 +132,7 @@ pub fn power_step(g: &mut Game, id: ObjId) {
             o.pool -= need;
             o.ship.as_mut().unwrap().life_failures = 0;
         } else {
+            o.pool = 0.0; // shortfall wipes the pool (1.65 linear 0xA51C)
             let s = o.ship.as_mut().unwrap();
             s.life_failures += 1;
             let failures = s.life_failures;

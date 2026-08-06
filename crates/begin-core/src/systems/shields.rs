@@ -29,17 +29,17 @@ pub fn shields_step(g: &mut Game, id: ObjId) {
         })
         .sum();
 
-    if pool < cost {
-        // power starvation: all shields drop this cycle (§6) and the AI's
-        // shields-starved flag is raised (brain+9Ch)
-        for sh in s.shields.iter_mut() {
-            sh.effective = 0.0;
-        }
-        s.brain.shields_starved = true;
-        return;
+    // power starvation drops every shield for the cycle AND wipes the whole
+    // pool — a 1-eu shortfall costs everything downstream (weapons charging)
+    // — but strength regen still runs while unpowered (1.65 linear 0xA627;
+    // begin2 sub_C883 matches)
+    let paid = pool >= cost;
+    if paid {
+        o.pool -= cost;
+    } else {
+        o.pool = 0.0;
     }
-    o.pool -= cost;
-    s.brain.shields_starved = false;
+    s.brain.shields_starved = !paid;
 
     for sh in s.shields.iter_mut() {
         if sh.sys.destroyed() {
@@ -53,7 +53,8 @@ pub fn shields_step(g: &mut Game, id: ObjId) {
             sh.strength = (sh.strength + gain).min(ceiling);
         }
         sh.strength = sh.strength.min(ceiling);
-        sh.effective = if sh.state == ShieldState::Down { 0.0 } else { sh.strength };
+        sh.effective =
+            if !paid || sh.state == ShieldState::Down { 0.0 } else { sh.strength };
     }
 }
 
