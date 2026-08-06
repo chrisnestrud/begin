@@ -98,7 +98,7 @@ pub fn launcher_step(g: &mut Game) {
                 mark,
                 desired_mark: mark,
                 pos: my_pos,
-                vel: dir(course, mark) * (pd.velocity * SUBSTEP_SCALE),
+                vel: dir(course, mark) * (pd.velocity * crate::constants::substeps(g.tuning.model).1),
                 warp_budget: 0.0,
                 pool: 0.0,
                 residual: 0.0,

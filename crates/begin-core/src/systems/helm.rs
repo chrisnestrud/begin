@@ -37,6 +37,7 @@ pub fn warp_accel(g: &mut Game) {
 /// §5.2 — pursue/elude re-aim, turning, and velocity vectors (`sub_CEB8`).
 pub fn turn_and_guide(g: &mut Game) {
     let planar = g.tuning.planar_lock;
+    let substep_scale = crate::constants::substeps(g.tuning.model).1;
     for id in g.ids() {
         let o = g.obj(id);
         if o.ballistic {
@@ -98,7 +99,7 @@ pub fn turn_and_guide(g: &mut Game) {
         }
         o.mark = o.mark.clamp(-90.0, 90.0);
         // velocity per sub-step (§1)
-        o.vel = dir(o.course, o.mark) * (o.warp * SUBSTEP_SCALE);
+        o.vel = dir(o.course, o.mark) * (o.warp * substep_scale);
     }
 }
 

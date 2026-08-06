@@ -449,7 +449,10 @@ fn v165_merged_salvo_matches_the_dosbox_measurement() {
     // (prox 200) collapses a Klingon BC's facing shield from 100% to ~8%
     // with at most a small hull leak (1 hit, a couple of crew) — the
     // per-application drain 1 + 0.3*absorbed compounding six times.
-    let (mut g, ally, enemy) = close_duel(23, 6000.0);
+    // (Seed-sensitive: 1.65's 10x300-unit movement strides can step past a
+    // 200-unit prox ring — also faithful; the lab's first salvo missed
+    // exactly that way. This seed reproduces the measured hit.)
+    let (mut g, ally, enemy) = close_duel(24, 6000.0);
     orders::load_tubes(&mut g, ally, &Mounts::All, Some(200.0));
     for _ in 0..6 {
         g.run_cycle();

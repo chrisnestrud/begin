@@ -7,6 +7,18 @@ pub const UNITS_PER_WARP_PER_CYCLE: f64 = 100.0; // flt_35F11 101691
 pub const SUBSTEPS: usize = 20; // dbl_332AE=20.0; uniform 20×5.0 (documented fix of 19×5 quirk)
 pub const SUBSTEP_SCALE: f64 = 5.0; // dbl_32DBA
 
+/// Movement substeps per cycle and per-substep velocity scale. Both nets
+/// 100 units/warp/cycle; 1.65 always integrates 10 × (vel × 10.0)
+/// (pipeline linear 0xA23D `mov si,0xA`, scale ds:69C5), begin2/port
+/// 20 × (vel × 5.0). Coarser 1.65 steps mean prox fuses sample half as
+/// often — fast torps can stride past a tight prox setting.
+pub fn substeps(model: DamageModel) -> (usize, f64) {
+    match model {
+        DamageModel::V165 => (10, 10.0),
+        DamageModel::V200 => (SUBSTEPS, SUBSTEP_SCALE),
+    }
+}
+
 // --- helm (§5) ---
 pub const WARP_SNAP: f64 = 0.01; // dbl_32DAA
 pub const MIN_WARP: f64 = -1.0; // dbl_32DA2 (reverse)

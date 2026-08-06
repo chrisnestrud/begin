@@ -2,7 +2,7 @@
 //! (§4 `detonation` 26446). Order is load-bearing: the AI's decisions
 //! depend on it (counts computed before firing, pressure decay on hit).
 
-use crate::constants::SUBSTEPS;
+use crate::constants::substeps;
 use crate::game::{EndState, Game};
 use crate::object::*;
 
@@ -65,13 +65,13 @@ impl Game {
         // 9. movement sub-steps interleaved with prox fuses; the original ran
         //    19×5 with ordnance and 20×5 without — we run 20 uniformly (§1)
         if self.any_ordnance() {
-            for _ in 0..SUBSTEPS {
+            for _ in 0..substeps(self.tuning.model).0 {
                 crate::systems::helm::integrate_substep(self);
                 crate::systems::torpedoes::prox_fuses(self);
                 crate::systems::damage::splash_starter(self);
             }
         } else {
-            for _ in 0..SUBSTEPS {
+            for _ in 0..substeps(self.tuning.model).0 {
                 crate::systems::helm::integrate_substep(self);
             }
         }

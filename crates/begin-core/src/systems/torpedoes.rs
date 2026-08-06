@@ -165,7 +165,7 @@ fn fire_tubes(g: &mut Game, id: ObjId) {
             mark,
             desired_mark: mark,
             pos: my_pos,
-            vel: dir(course, mark) * (velocity * SUBSTEP_SCALE),
+            vel: dir(course, mark) * (velocity * crate::constants::substeps(g.tuning.model).1),
             warp_budget: 0.0,
             pool: 0.0,
             residual: 0.0,
