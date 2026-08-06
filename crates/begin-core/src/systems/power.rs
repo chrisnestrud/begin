@@ -99,28 +99,27 @@ pub fn power_step(g: &mut Game, id: ObjId) {
         let d = &g.data.ships[s.design];
         (d.crew, d.warp_power_use, s.docked())
     };
+    // warp at or below 1 (impulse crawl, reverse) is FREE and generates no
+    // drive heat — cost and ratio only exist when desired > 1.0 (1.65
+    // linear 0xA42B-0xA48B; begin2 sub_C4F7 identical)
     let warp_ratio = {
         let o = g.obj_mut(id);
-        let ratio = if o.desired_warp < 1.0 && maxw == 0.0 {
-            0.0
-        } else if maxw > 0.0 {
-            o.desired_warp.abs() / maxw
+        if o.desired_warp > 1.0 && maxw > 0.0 {
+            o.warp_budget -= o.desired_warp * warp_power_use;
+            o.desired_warp / maxw
         } else {
             0.0
-        };
-        o.warp_budget -= o.desired_warp.abs() * warp_power_use;
-        ratio
+        }
     };
 
     // sub_F259: drive temperature
     drive_temperature(g, id, warp_ratio);
 
-    // half the unused warp budget spills into the pool (flt_32CBE = 0.5)
+    // half the warp budget spills into the pool unconditionally
+    // (flt_32CBE = 0.5; 1.65 at 0xA4AC has no positivity guard)
     {
         let o = g.obj_mut(id);
-        if o.warp_budget > 0.0 {
-            o.pool += o.warp_budget * PHASER_HALF;
-        }
+        o.pool += o.warp_budget * PHASER_HALF;
     }
 
     // life support: design crew / 10 per cycle; 3 consecutive failures kill
