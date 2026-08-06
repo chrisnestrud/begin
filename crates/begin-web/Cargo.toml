@@ -1,0 +1,13 @@
+[package]
+name = "begin-web"
+version = "0.1.0"
+edition.workspace = true
+description = "BEGIN in the browser: wasm wrapper around begin::session"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+begin = { path = "../begin", default-features = false }
+begin-core = { path = "../begin-core" }
+serde_json = "1"
