@@ -487,15 +487,19 @@ fn flush_hit_reports(g: &mut Game) {
         {
             let s = g.obj_mut(id).ship.as_mut().unwrap();
             for (k, sh) in s.shields.iter_mut().enumerate() {
-                if sh.hits > 0 {
-                    lines.push(format!("{name}'s shield {} hit.", k + 1));
-                    sh.hits = 0;
+                match sh.hits {
+                    0 => {}
+                    1 => lines.push(format!("{name}'s shield {} hit.", k + 1)),
+                    n => lines.push(format!("{n} hits on {name}'s shield {}!", k + 1)),
                 }
+                sh.hits = 0;
             }
-            if s.hull_hits > 0 {
-                lines.push(format!("{name} has sustained hull damage!"));
-                s.hull_hits = 0;
+            match s.hull_hits {
+                0 => {}
+                1 => lines.push(format!("1 hit on {name}'s hull.")),
+                n => lines.push(format!("{n} hits on {name}'s hull!")),
             }
+            s.hull_hits = 0;
         }
         for text in lines {
             g.say(None, "", text, ReportKind::Alert);
