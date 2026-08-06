@@ -139,7 +139,11 @@ fn fire_tubes(g: &mut Game, id: ObjId) {
         if let Some(&(_, _, _, _, prev)) = spawned
             .iter()
             .find(|&&(c, m, d, tg, _)| {
-                (c - course).abs() < 1e-9 && (m - mark).abs() < 1e-9 && d == state.design && tg == lock
+                // a locked torp also merges into an unlocked head (1.65)
+                (c - course).abs() < 1e-9
+                    && (m - mark).abs() < 1e-9
+                    && d == state.design
+                    && (tg == lock || tg.is_none())
             })
         {
             if let Some(p) = g.get_mut(prev) {

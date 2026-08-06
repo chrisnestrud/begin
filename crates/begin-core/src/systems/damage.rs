@@ -205,6 +205,7 @@ fn system_damage(g: &mut Game, target: ObjId, n: i32) {
     if n <= 0 {
         return;
     }
+    let clamp_shield_strength = g.tuning.model == DamageModel::V200;
     const CLASSES: [(Class, f64); 13] = [
         (Class::Shields, 75.0),
         (Class::Tubes, 50.0),
@@ -258,8 +259,12 @@ fn system_damage(g: &mut Game, target: ObjId, n: i32) {
                     let sh = &mut s.shields[k];
                     let was = sh.sys.destroyed();
                     sh.sys.dmg = (sh.sys.dmg + amount).min(100);
-                    sh.strength = sh.strength.min((100 - sh.sys.dmg) as f64);
-                    sh.effective = sh.effective.min(sh.strength);
+                    // begin2 clamps stored strength to the new ceiling; 1.65
+                    // keeps it (repair resumes from the old value)
+                    if clamp_shield_strength {
+                        sh.strength = sh.strength.min((100 - sh.sys.dmg) as f64);
+                    }
+                    sh.effective = sh.effective.min(sh.strength).min((100 - sh.sys.dmg) as f64);
                     if sh.sys.destroyed() && !was {
                         reports.push(format!("{name}'s shield {} has been destroyed.", k + 1));
                     }

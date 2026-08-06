@@ -12,6 +12,7 @@ pub fn shields_step(g: &mut Game, id: ObjId) {
     let shield_energy = g.data.ships[design_idx].shield_energy;
     let recharge = g.data.ships[design_idx].shield_recharge;
 
+    let g_model = g.tuning.model;
     let o = g.obj_mut(id);
     let pool = o.pool;
     let s = o.ship.as_mut().unwrap();
@@ -41,9 +42,14 @@ pub fn shields_step(g: &mut Game, id: ObjId) {
     }
     s.brain.shields_starved = !paid;
 
+    let v165 = g_model == crate::constants::DamageModel::V165;
     for sh in s.shields.iter_mut() {
         if sh.sys.destroyed() {
-            sh.strength = 0.0;
+            // 1.65 keeps the stored strength on a destroyed shield — repair
+            // below 100% damage resumes from the old value
+            if !v165 {
+                sh.strength = 0.0;
+            }
             sh.effective = 0.0;
             continue;
         }
@@ -52,9 +58,14 @@ pub fn shields_step(g: &mut Game, id: ObjId) {
             let gain = (sh.strength / 100.0 * recharge).max(SHIELD_REGEN_MIN);
             sh.strength = (sh.strength + gain).min(ceiling);
         }
-        sh.strength = sh.strength.min(ceiling);
-        sh.effective =
-            if !paid || sh.state == ShieldState::Down { 0.0 } else { sh.strength };
+        if !v165 {
+            sh.strength = sh.strength.min(ceiling);
+        }
+        sh.effective = if !paid || sh.state == ShieldState::Down {
+            0.0
+        } else {
+            sh.strength.min(ceiling)
+        };
     }
 }
 
