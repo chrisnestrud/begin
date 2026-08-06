@@ -146,8 +146,9 @@ fn fire_tubes(g: &mut Game, id: ObjId) {
                 }
             }
         }
-        // velocity with variance
-        let velocity = td.velocity * (1.0 + g.rng.range(-td.speed_variance, td.speed_variance));
+        // speed variance is ADDITIVE warp, not a fraction: mkvii 30 ± 0.07
+        // (1.65 spawn at linear 0xBF78; begin2 matches)
+        let velocity = td.velocity + g.rng.range(-td.speed_variance, td.speed_variance);
         let torp = Object {
             kind: Kind::Torp,
             name: td.name.clone(),
