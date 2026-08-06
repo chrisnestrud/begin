@@ -1,6 +1,6 @@
 //! Milestone 2 tests: weapons, damage, splash, repair, boarding.
 
-use begin_core::object::{Control, Det, HelmMode};
+use begin_core::object::Control;
 use begin_core::orders::{self, Mounts};
 use begin_core::scenario::{spawn_fleets, Scenario};
 use begin_core::{Game, GameData, ObjId, Tuning};
