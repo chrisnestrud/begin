@@ -49,7 +49,17 @@ pub fn turn_and_guide(g: &mut Game) {
         if helm != HelmMode::Course {
             if let Some(tid) = target.filter(|&t| g.get(t).is_some()) {
                 let viewer_side = o.nation;
-                let (tb, tm) = target_bearing_mark(g, id, tid, viewer_side);
+                // 1.65 homing ordnance steers by TRUE position (bearing fn
+                // linear 0x12E8C has no ghost logic); ships and the begin2
+                // profile honor the fog ghost
+                let true_track =
+                    o.ship.is_none() && g.tuning.model == crate::constants::DamageModel::V165;
+                let (tb, tm) = if true_track {
+                    let d = g.obj(tid).pos - g.obj(id).pos;
+                    (crate::math::bearing_of(d.x, d.y), mark_of(d))
+                } else {
+                    target_bearing_mark(g, id, tid, viewer_side)
+                };
                 let o = g.obj_mut(id);
                 match helm {
                     HelmMode::Pursue => {
