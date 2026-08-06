@@ -13,6 +13,9 @@ use begin_core::Game;
 pub enum Outcome {
     /// Command consumed the turn: run a cycle.
     Advance,
+    /// 1.65 flagship transfer: the player now commands this ship (turn
+    /// consumed like Advance).
+    Flagship(begin_core::ObjId),
     /// Status/display only: prompt again.
     Stay,
     /// A required argument is missing: show `question` as the prompt and
@@ -205,6 +208,11 @@ impl<'a> Parser<'a> {
         let v: f64 = t.parse().ok()?;
         self.i += 1;
         Some(v)
+    }
+    /// Like number() but never consumes.
+    fn number_peek(&mut self) -> Option<f64> {
+        self.skip_noise();
+        self.peek()?.parse().ok()
     }
     /// integer list like "1 2 3"; empty → All. "all" → All.
     fn mounts(&mut self) -> Mounts {
@@ -1447,6 +1455,36 @@ impl<'a> Parser<'a> {
     // ---- misc systems ----
 
     fn cmd_transport(&mut self) -> R {
+        // 1.65 form: "transport [bridge crew to] <ally>" — flagship
+        // transfer (handler linear 0x54C2, range 3000.1, target crew > 0).
+        // begin2 form: "transport <count> <ship>" — crew beaming.
+        while matches!(self.peek(), Some("bridge" | "crew" | "to")) {
+            self.i += 1;
+        }
+        if self.number_peek().is_none() && self.peek().is_some() {
+            let ship = self.ship()?;
+            if ship == self.me {
+                return Err("We're already aboard.".into());
+            }
+            if self.g.obj(ship).nation != self.g.obj(self.me).nation {
+                return Err("We can only transfer the flag to an allied ship.".into());
+            }
+            let s = self.g.obj(ship).ship.as_ref().unwrap();
+            if s.survivors <= 0 {
+                return Err("No crew alive aboard her.".into());
+            }
+            let dist = (self.g.obj(ship).pos - self.g.obj(self.me).pos).len();
+            if dist > 3000.1 {
+                return Err("Out of transporter range (3000).".into());
+            }
+            let my_ctl = self.g.obj(self.me).control.clone();
+            let their_ctl = self.g.obj(ship).control.clone();
+            self.g.obj_mut(self.me).control = their_ctl;
+            self.g.obj_mut(ship).control = my_ctl;
+            let name = self.g.obj(ship).name.clone();
+            self.officer(format!("Bridge crew transported to the {name}."));
+            return Ok(Outcome::Flagship(ship));
+        }
         let n = self.number().ok_or("Transport how many?")? as i32;
         let ship = self.ship()?;
         match begin_core::systems::boarding::transport(self.g, self.me, ship, n) {

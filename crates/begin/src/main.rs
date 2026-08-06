@@ -201,7 +201,7 @@ fn main() {
             return;
         }
     };
-    let me = fleets.flagship.expect("ally flagship");
+    let mut me = fleets.flagship.expect("ally flagship");
 
     let side = game.obj(me).nation;
     // Spock's pregame estimate (1.65 fmt at file 0x244AC)
@@ -273,6 +273,22 @@ fn main() {
             Outcome::Ask { question, prefix, default } => {
                 pending = Some((question, prefix, default));
                 continue;
+            }
+            Outcome::Flagship(new_me) => {
+                me = new_me;
+                game.run_cycle();
+                fighters::absorb_docked_fighters(&mut game);
+                for r in game.reporter.take() {
+                    if r.visible_to(side) {
+                        disp.push(ui::report_line(&r));
+                    }
+                }
+                let mut chart = Vec::new();
+                ui::chart_lines(&game, me, &mut chart);
+                disp.push_plain("");
+                for l in chart {
+                    disp.push(l);
+                }
             }
             Outcome::Advance => {
                 game.run_cycle();

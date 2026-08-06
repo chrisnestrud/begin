@@ -139,7 +139,7 @@ pub async fn run_host(cfg: HostConfig) -> Result<(), Box<dyn std::error::Error>>
     // seat assignment: host takes the ally flagship; remote players take
     // the enemy flagship first in --versus, then remaining ally ships.
     let mut seats: HashMap<PlayerId, Seat> = HashMap::new();
-    let my_ship = fleets.flagship.or(fleets.ally_ids.first().copied());
+    let mut my_ship = fleets.flagship.or(fleets.ally_ids.first().copied());
     let mut pool: Vec<ObjId> = Vec::new();
     if cfg.versus {
         pool.extend(fleets.enemy_ids.iter().copied());
@@ -274,6 +274,11 @@ pub async fn run_host(cfg: HostConfig) -> Result<(), Box<dyn std::error::Error>>
                             my_submitted = true;
                             draw_local(&game, my_ship, &my_disp, &cfg.name);
                         }
+                        Outcome::Flagship(nid) => {
+                            my_ship = Some(nid);
+                            my_submitted = true;
+                            draw_local(&game, my_ship, &my_disp, &cfg.name);
+                        }
                     },
                     None => {
                         quit = true;
@@ -311,6 +316,12 @@ pub async fn run_host(cfg: HostConfig) -> Result<(), Box<dyn std::error::Error>>
                                 let _ = lobby.send_reliable(pid, msg("frame", "data", &f)).await;
                             }
                             Outcome::Advance => {
+                                seat.submitted = true;
+                                let f = render_for(&game, seat);
+                                let _ = lobby.send_reliable(pid, msg("frame", "data", &f)).await;
+                            }
+                            Outcome::Flagship(nid) => {
+                                seat.ship = Some(nid);
                                 seat.submitted = true;
                                 let f = render_for(&game, seat);
                                 let _ = lobby.send_reliable(pid, msg("frame", "data", &f)).await;
