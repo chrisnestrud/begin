@@ -426,8 +426,10 @@ fn splash_damage(g: &mut Game, id: ObjId) {
             continue;
         }
         if let Some(s) = o.ship.as_ref() {
-            if s.cloaked {
-                continue; // cloaked ships are untouched by splash
+            // docked ships are sheltered by their host (which cascades the
+            // damage to them); cloak is no protection from a blast
+            if s.docked() {
+                continue;
             }
         }
         let delta = o.pos - pos;

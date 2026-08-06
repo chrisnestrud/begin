@@ -120,8 +120,10 @@ fn resolve_banks(g: &mut Game, id: ObjId) {
             }
             let oo = g.obj(other);
             if let Some(s2) = oo.ship.as_ref() {
-                if s2.cloaked {
-                    continue; // can't hit what the sensors can't see
+                // docked ships are beam-immune; cloaked ships are fully
+                // hittable (and taking a hit reveals them)
+                if s2.docked() {
+                    continue;
                 }
             }
             let delta = oo.pos - my_pos;
@@ -185,7 +187,7 @@ fn resolve_rails(g: &mut Game, id: ObjId) {
             }
             let oo = g.obj(other);
             if let Some(s2) = oo.ship.as_ref() {
-                if s2.cloaked {
+                if s2.docked() {
                     continue;
                 }
             }
