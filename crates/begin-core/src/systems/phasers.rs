@@ -34,7 +34,8 @@ fn charge_banks(g: &mut Game, id: ObjId) {
     let mut pool = o.pool;
     let s = o.ship.as_mut().unwrap();
     for b in s.banks.iter_mut() {
-        if b.sys.destroyed() || !b.enabled || b.fire {
+        // sub_B1C1: only banks at 0% damage recharge
+        if b.sys.dmg > 0 || !b.enabled || b.fire {
             continue;
         }
         let needed = (banks_charge - b.charge).max(0.0);

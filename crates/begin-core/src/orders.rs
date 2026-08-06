@@ -26,12 +26,18 @@ impl Mounts {
 
 // ---- phasers ----
 
-/// `fire phasers <list> spread <s>` (`sub_AD74`).
+/// `fire phasers <list> spread <s>` (`sub_AD74` 16090-16117): a bank arms
+/// only at exactly full design charge with zero damage, and the spread is
+/// stored on every successful order.
 pub fn fire_phasers(g: &mut Game, id: ObjId, which: &Mounts, spread: Option<f64>) -> usize {
+    let charge_full = {
+        let s = g.obj(id).ship.as_ref().unwrap();
+        g.data.ships[s.design].banks_charge
+    };
     let s = g.obj_mut(id).ship.as_mut().unwrap();
     let mut n = 0;
     for (k, b) in s.banks.iter_mut().enumerate() {
-        if !which.contains(k) || b.sys.destroyed() || !b.enabled || b.charge <= 0.0 {
+        if !which.contains(k) || b.sys.dmg > 0 || !b.enabled || b.charge < charge_full {
             continue;
         }
         b.fire = true;
@@ -55,7 +61,7 @@ pub fn fire_n_charged_banks(g: &mut Game, id: ObjId, n: usize, spread: f64) -> u
         if fired >= n {
             break;
         }
-        if b.sys.destroyed() || !b.enabled || b.charge < charge_full {
+        if b.sys.dmg > 0 || !b.enabled || b.charge < charge_full {
             continue;
         }
         b.fire = true;
