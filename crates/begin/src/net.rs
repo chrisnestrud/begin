@@ -32,9 +32,6 @@ fn origin_for(server: &str) -> Option<String> {
     }
 }
 
-.to_string())
-}
-
 pub struct HostConfig {
     pub server: String,
     pub code: String,
