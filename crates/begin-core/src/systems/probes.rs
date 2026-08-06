@@ -2,7 +2,6 @@
 //! `sub_ECDC` ≈23760). Probes are slow homing weapons, controllable after
 //! launch, remotely detonatable; data probes extend the side's sensors.
 
-use crate::constants::*;
 use crate::events::ReportKind;
 use crate::game::Game;
 use crate::math::*;

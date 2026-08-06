@@ -1,16 +1,13 @@
 //! BEGIN — A Tactical Starship Simulation.
 //! Rust port of begin2.exe console mode (see AI_AND_COMBAT.md).
 
-mod commands;
-mod fighters;
 mod net;
-mod ui;
 
-use begin_core::scenario::{spawn_fleets, FleetEntry, Scenario, SideConfig};
-use begin_core::{Game, GameData, Tuning};
-use commands::Outcome;
+use begin::session::{self, Out, SessionOpts};
+use begin::ui::{CYAN, GREY, RED, RESET, WHITE};
+use begin_core::scenario::Scenario;
+use begin_core::{GameData, Tuning};
 use std::io::{BufRead, Write};
-use ui::{Display, BGREEN, CYAN, GREEN, GREY, RED, RESET, WHITE};
 
 fn main() {
     let mut args: Vec<String> = std::env::args().collect();
@@ -154,7 +151,7 @@ fn main() {
         } else {
             let stdin = std::io::stdin();
             let mut lines = stdin.lock().lines();
-            match setup_scenario(&data, seed, epoch, spawn_body, &mut lines) {
+            match session::setup_over_stdin(&data, seed, epoch, spawn_body, &mut lines) {
                 Some(x) => x,
                 None => return,
             }
@@ -177,180 +174,50 @@ fn main() {
         return;
     }
 
+    // single player: the shared Session drives setup and play; this loop is
+    // just a stdin pump (the browser build pumps the same Session from JS)
     let stdin = std::io::stdin();
     let mut lines = stdin.lock().lines();
-
-    let (scenario, name) = if quick {
-        let mut sc = Scenario::duel();
-        sc.epoch_jd = epoch;
-        sc.spawn_body = spawn_body.clone();
-        sc.seed = seed;
-        (sc, "Admiral".to_string())
-    } else {
-        match setup_scenario(&data, seed, epoch, spawn_body, &mut lines) {
-            Some(x) => x,
-            None => return,
-        }
+    let opts = SessionOpts {
+        tuning,
+        seed,
+        epoch_jd: epoch,
+        spawn_body,
+        flash,
+        quick,
     };
-    let mut game = Game::new(data, tuning, seed);
-    setup_environment(&mut game, &scenario);
-    let fleets = match spawn_fleets(&mut game, &scenario) {
-        Ok(f) => f,
-        Err(e) => {
-            println!("{RED}{e}{RESET}");
-            return;
-        }
-    };
-    let mut me = fleets.flagship.expect("ally flagship");
-
-    let side = game.obj(me).nation;
-    // Spock's pregame estimate (1.65 fmt at file 0x244AC)
-    {
-        let (odds, against) = game.pregame_odds(side);
-        let officer = game.data.nations[side].officers.first().cloned().unwrap_or_default();
-        let mut num = format!("{odds:.2}");
-        while num.ends_with('0') {
-            num.pop();
-        }
-        let num = num.replace('.', " point ").trim_end_matches(" point ").to_string();
-        game.say(
-            Some(side),
-            &officer,
-            format!(
-                "I estimate our chance of defeating the enemy to be {num} to 1{}.",
-                if against { " against" } else { "" }
-            ),
-            begin_core::events::ReportKind::Ally,
-        );
-    }
-    let mut disp = Display::default();
-    disp.flash = flash;
-    disp.push_plain("");
-    let mut chart = Vec::new();
-    ui::chart_lines(&game, me, &mut chart);
-    for l in chart {
-        disp.push(l);
-    }
-
-    let stdout = std::io::stdout();
-    let draw = |game: &Game,
-                viewer: Option<begin_core::ObjId>,
-                disp: &Display,
-                prompt: &str,
-                flashes: &[begin_core::events::Flash]| {
-        let mut out = stdout.lock();
-        let frame = ui::render(game, viewer, disp, prompt, flashes);
-        let _ = out.write_all(frame.as_bytes());
-        let _ = out.flush();
-    };
-    // an in-progress prompt for a forgotten argument: (question, prefix, default)
-    let mut pending: Option<(String, String, String)> = None;
-    loop {
-        let prompt = pending.as_ref().map(|(q, _, _)| q.as_str()).unwrap_or(&name);
-        draw(&game, game.get(me).map(|_| me), &disp, prompt, &[]);
-        // read
+    let (mut sess, outs) = session::Session::new(data, opts);
+    emit(&outs);
+    while !sess.finished() {
         let Some(Ok(line)) = lines.next() else { break };
-        let input = match pending.take() {
-            Some((_, prefix, default)) => {
-                let ans = line.trim();
-                let ans = if ans.is_empty() { default } else { ans.to_string() };
-                if ans.is_empty() {
-                    disp.push(ui::Line::plain("(cancelled)"));
-                    continue;
-                }
-                format!("{prefix} {ans}")
-            }
-            None => line.trim().to_string(),
-        };
-        let outcome = if game.get(me).is_some() && game.over.is_none() {
-            commands::execute(&mut game, me, &mut disp, &input)
-        } else {
-            Outcome::Quit
-        };
-        match outcome {
-            Outcome::Quit => break,
-            Outcome::Stay => continue,
-            Outcome::Ask { question, prefix, default } => {
-                pending = Some((question, prefix, default));
-                continue;
-            }
-            Outcome::Flagship(new_me) => {
-                me = new_me;
-                game.run_cycle();
-                fighters::absorb_docked_fighters(&mut game);
-                for r in game.reporter.take() {
-                    if r.visible_to(side) {
-                        disp.push(ui::report_line(&r));
-                    }
-                }
-                let mut chart = Vec::new();
-                ui::chart_lines(&game, me, &mut chart);
-                disp.push_plain("");
-                for l in chart {
-                    disp.push(l);
-                }
-            }
-            Outcome::Advance => {
-                game.run_cycle();
-                fighters::absorb_docked_fighters(&mut game);
-                for r in game.reporter.take() {
-                    if r.visible_to(side) {
-                        disp.push(ui::report_line(&r));
-                    }
-                }
-                let flashes = game.take_flashes();
-                let alive = game.get(me).is_some();
-                if alive {
-                    let mut chart = Vec::new();
-                    ui::chart_lines(&game, me, &mut chart);
-                    disp.push_plain("");
-                    for l in chart {
-                        disp.push(l);
-                    }
-                } else {
-                    disp.push(ui::Line::new(
-                        format!("{}Your ship has been destroyed.{RESET}", ui::RBLINK),
-                        30,
-                    ));
-                }
-                // brief weapon-flash frame between cycles
-                if disp.flash && !flashes.is_empty() && alive && game.over.is_none() {
-                    draw(&game, Some(me), &disp, &name, &flashes);
-                    std::thread::sleep(std::time::Duration::from_millis(140));
-                }
-                if !alive || game.over.is_some() {
-                    // show the final events (your destruction included) with
-                    // the blast asterisks flashing, and give the commander a
-                    // moment before the evaluation
-                    let fx: &[begin_core::events::Flash] =
-                        if disp.flash { &flashes } else { &[] };
-                    draw(&game, game.get(me).map(|_| me), &disp, &name, fx);
-                    std::thread::sleep(std::time::Duration::from_secs(4));
-                    break;
-                }
-            }
-        }
-    }
-
-    // endgame evaluation (§13; 1.65 adds the numeric score and the roster)
-    println!("\r\n");
-    let player_lost = game.get(me).is_none();
-    let (_tier, score, text) = game.evaluation(side, player_lost);
-    let nation = &game.data.nations[side];
-    println!("{WHITE}{} \u{2014} {}{RESET}", nation.name, nation.command);
-    println!("{GREEN}{text}{RESET}");
-    println!();
-    println!("{GREEN}Performance Evaluation: {score:.2}{RESET}");
-    println!();
-    println!("{GREEN}Survivors Reported:{RESET}");
-    for (nat, line) in game.survivors_roster() {
-        let color = if nat == side { GREEN } else { RED };
-        println!("    {color}{line}{RESET}");
+        let outs = sess.feed(&line);
+        emit(&outs);
     }
 }
 
-fn setup_environment(g: &mut Game, sc: &Scenario) {
-    begin_core::env::setup(g, sc.epoch_jd, sc.spawn_body.as_deref(), sc.seed);
+/// Print session output on the console, realizing Hold as a sleep.
+fn emit(outs: &[Out]) {
+    let mut out = std::io::stdout().lock();
+    for o in outs {
+        match o {
+            Out::Frame { ansi, .. } => {
+                let _ = out.write_all(ansi.as_bytes());
+                let _ = out.flush();
+            }
+            Out::Text(t) => {
+                let _ = writeln!(out, "{t}");
+            }
+            Out::Prompt(p) => {
+                let _ = write!(out, "{p}");
+                let _ = out.flush();
+            }
+            Out::Hold(ms) => {
+                let _ = out.flush();
+                std::thread::sleep(std::time::Duration::from_millis(*ms as u64));
+            }
+            Out::Done => {}
+        }
+    }
 }
 
 fn prompt(msg: &str, lines: &mut std::io::Lines<std::io::StdinLock>) -> Option<String> {
@@ -359,146 +226,3 @@ fn prompt(msg: &str, lines: &mut std::io::Lines<std::io::StdinLock>) -> Option<S
     lines.next()?.ok().map(|s| s.trim().to_string())
 }
 
-fn setup_scenario(
-    data: &GameData,
-    seed: u64,
-    epoch: f64,
-    spawn_body: Option<String>,
-    lines: &mut std::io::Lines<std::io::StdinLock>,
-) -> Option<(Scenario, String)> {
-    let name = loop {
-        let n = prompt("What is your name, commander?", lines)?;
-        if !n.is_empty() {
-            break n;
-        }
-    };
-    let nations: Vec<String> = data.nations.iter().map(|n| n.adjective.clone()).collect();
-    let nation_list = nations.join(", ");
-    let ally_nation = loop {
-        let n = prompt(&format!("Your nation? ({nation_list})"), lines)?;
-        if let Some(nn) = data.nation(&n) {
-            break nn.adjective.clone();
-        }
-        println!("{RED}Unknown nation.{RESET}");
-    };
-    let enemy_nation = loop {
-        let n = prompt(&format!("Enemy nation? ({nation_list})"), lines)?;
-        if let Some(nn) = data.nation(&n) {
-            if nn.adjective != ally_nation {
-                break nn.adjective.clone();
-            }
-            println!("{RED}A civil war?  Pick someone else.{RESET}");
-        } else {
-            println!("{RED}Unknown nation.{RESET}");
-        }
-    };
-
-    println!();
-    println!(
-        "{WHITE}FLEET SETUP{RESET}  (up to {} ships per side)",
-        begin_core::scenario::MAX_FLEET
-    );
-    println!("{GREY}Commands: ally <n> <class> [flagship] | enemy <n> <class> | flagship <class>{RESET}");
-    println!("{GREY}          begin | random (spread out, sensors dark) | quit{RESET}");
-    {
-        let ally_classes: Vec<String> =
-            data.classes_of(&ally_nation).iter().map(|c| c.name.clone()).collect();
-        let enemy_classes: Vec<String> =
-            data.classes_of(&enemy_nation).iter().map(|c| c.name.clone()).collect();
-        println!("{BGREEN}{ally_nation}{RESET}: {}", ally_classes.join(", "));
-        println!("{RED}{enemy_nation}{RESET}: {}", enemy_classes.join(", "));
-    }
-
-    let mut ally = SideConfig { nation: ally_nation.clone(), ships: Vec::new(), flagship: None };
-    let mut enemy = SideConfig { nation: enemy_nation.clone(), ships: Vec::new(), flagship: None };
-    let random_placement;
-
-    loop {
-        let line = prompt(&format!("{name} (setup)>"), lines)?;
-        let lower = line.to_ascii_lowercase();
-        let w: Vec<&str> = lower.split_whitespace().collect();
-        if w.is_empty() {
-            continue;
-        }
-        match w[0] {
-            "begin" | "random" => {
-                if ally.ships.is_empty() || enemy.ships.is_empty() {
-                    println!("{RED}Both fleets need at least one ship.{RESET}");
-                    continue;
-                }
-                random_placement = w[0] == "random";
-                break;
-            }
-            "quit" | "exit" => return None,
-            "ally" | "enemy" | "config" | "configure" => {
-                let mut idx = 1;
-                let is_ally = if w[0] == "config" || w[0] == "configure" {
-                    let side = w.get(1).copied().unwrap_or("ally");
-                    idx = 2;
-                    side == "ally"
-                } else {
-                    w[0] == "ally"
-                };
-                let side_cfg = if is_ally { &mut ally } else { &mut enemy };
-                let nation = if is_ally { &ally_nation } else { &enemy_nation };
-                let mut k = idx;
-                let mut added = false;
-                while k < w.len() {
-                    let Ok(n) = w[k].parse::<usize>() else { break };
-                    k += 1;
-                    let mut class_words = Vec::new();
-                    let mut flag = false;
-                    while k < w.len() && w[k].parse::<usize>().is_err() {
-                        if w[k] == "flagship" {
-                            flag = true;
-                        } else {
-                            class_words.push(w[k]);
-                        }
-                        k += 1;
-                    }
-                    let class = class_words.join(" ");
-                    match data.find_class(nation, &class) {
-                        Some(d) => {
-                            let cname = d.name.clone();
-                            side_cfg
-                                .ships
-                                .push(FleetEntry { class: cname.clone(), count: n.clamp(1, 9) });
-                            if flag && is_ally {
-                                side_cfg.flagship = Some(cname.clone());
-                            }
-                            println!(
-                                "{GREEN}{} {} x{}{}{RESET}",
-                                nation,
-                                cname,
-                                n.clamp(1, 9),
-                                if flag { " (flagship)" } else { "" }
-                            );
-                            added = true;
-                        }
-                        None => println!("{RED}No {nation} class '{class}'.{RESET}"),
-                    }
-                }
-                if !added {
-                    println!("{GREY}e.g.  ally 2 heavy cruisers flagship{RESET}");
-                }
-            }
-            "flagship" => {
-                let class = w[1..].join(" ");
-                match data.find_class(&ally_nation, &class) {
-                    Some(d) => {
-                        ally.flagship = Some(d.name.clone());
-                        println!("{GREEN}Flagship: {}{RESET}", d.name);
-                    }
-                    None => println!("{RED}No such class.{RESET}"),
-                }
-            }
-            _ => println!("{RED}Setup commands: ally/enemy/flagship/begin/random/quit{RESET}"),
-        }
-    }
-
-    if ally.flagship.is_none() {
-        ally.flagship = ally.ships.first().map(|e| e.class.clone());
-    }
-    let sc = Scenario { ally, enemy, stations: Vec::new(), random_placement, seed, epoch_jd: epoch, spawn_body };
-    Some((sc, name))
-}

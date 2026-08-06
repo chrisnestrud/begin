@@ -4,9 +4,15 @@ version = "0.1.0"
 edition.workspace = true
 description = "BEGIN: A Tactical Starship Simulation - terminal game"
 
+[features]
+# The lobbylink multiplayer stack; off for the wasm (browser) build, which
+# only needs the lib (commands/ui/session).
+default = ["net"]
+net = ["dep:p2p_lobby_client", "dep:tokio", "dep:bytes"]
+
 [dependencies]
 begin-core = { path = "../begin-core" }
-p2p_lobby_client = { package = "p2p-lobby-client", path = "../../../lobbylink/clients/rust" }
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
+p2p_lobby_client = { package = "p2p-lobby-client", path = "../../../lobbylink/clients/rust", optional = true }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"], optional = true }
 serde_json = "1"
-bytes = "1"
+bytes = { version = "1", optional = true }

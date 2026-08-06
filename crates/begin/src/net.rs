@@ -13,8 +13,8 @@
 //!                  {"t":"info","text":"..."}   (lobby chatter)
 //!                  {"t":"over","text":"evaluation"}
 
-use crate::commands::{self, Outcome};
-use crate::ui::{self, Display, GREEN, GREY, RED, RESET, WHITE};
+use begin::commands::{self, Outcome};
+use begin::ui::{self, Display, GREEN, GREY, RED, RESET, WHITE};
 use begin_core::object::{Control, ObjId};
 use begin_core::scenario::{spawn_fleets, Scenario};
 use begin_core::{Game, GameData, Tuning};
@@ -342,7 +342,7 @@ pub async fn run_host(cfg: HostConfig) -> Result<(), Box<dyn std::error::Error>>
             }
 
             game.run_cycle();
-            crate::fighters::absorb_docked_fighters(&mut game);
+            begin::fighters::absorb_docked_fighters(&mut game);
             let reports = game.reporter.take();
             let flashes = game.take_flashes();
             for (_pid, seat) in seats.iter_mut() {
