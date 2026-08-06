@@ -208,10 +208,11 @@ pub fn prox_fuses(g: &mut Game) {
                 }
                 let (prox, pos, kinetic) =
                     (t.prox, o.pos, g.data.torps[t.design].kinetic);
+                // no owner and no cloak check — an armed torp triggers on any
+                // ship, the firer's own side included (sub_D2D2 20952-20991)
                 let hit = ships.iter().copied().find(|&s| {
                     s != id
                         && g.obj(s).det == Det::None
-                        && !g.obj(s).ship.as_ref().map(|sh| sh.cloaked).unwrap_or(false)
                         && (g.obj(s).pos - pos).len() < prox.max(1.0)
                 });
                 if let Some(victim) = hit {
@@ -250,7 +251,6 @@ pub fn prox_fuses(g: &mut Game) {
                 let hit = ships.iter().copied().any(|s| {
                     s != id
                         && g.obj(s).det == Det::None
-                        && !g.obj(s).ship.as_ref().map(|sh| sh.cloaked).unwrap_or(false)
                         && (g.obj(s).nation != nation || Some(s) == deliberate)
                         && (g.obj(s).pos - pos).len() < prox.max(1.0)
                 });
