@@ -233,7 +233,7 @@ impl Game {
             shields,
             transporters: vec![Sys::default(); d.transporters],
             hull_hits: 0,
-            armour: 0.0,
+            armour: d.armour,
             destruct_countdown: -1.0,
             scanner: Sys::default(),
             cloak_capable: d.can_cloak,

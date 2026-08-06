@@ -69,7 +69,8 @@
    "Buster",
    "Mellow"
   ],
-  "mass_capacity": 5.31664595e-315,
+  "armour": 10.0,
+  "mass_capacity": 0.0,
   "docked_repair_ratio": 0.0,
   "life_support": 25,
   "has_impulse": true,
@@ -173,6 +174,7 @@
    "Sludge",
    "Hazelwood"
   ],
+  "armour": 0.0,
   "mass_capacity": 0.0,
   "docked_repair_ratio": 0.0,
   "life_support": 100,
@@ -277,6 +279,7 @@
    "Brenner",
    "Fuji"
   ],
+  "armour": 0.0,
   "mass_capacity": 0.0,
   "docked_repair_ratio": 1.0,
   "life_support": 200,
@@ -383,6 +386,7 @@
    "Haley",
    "Nizhawa"
   ],
+  "armour": 0.0,
   "mass_capacity": 0.0,
   "docked_repair_ratio": 1.0,
   "life_support": 400,
@@ -487,6 +491,7 @@
    "Saito",
    "Hanson"
   ],
+  "armour": 0.0,
   "mass_capacity": 0.0,
   "docked_repair_ratio": 1.0,
   "life_support": 1000,
@@ -591,6 +596,7 @@
    "Mitchell",
    "Wayne"
   ],
+  "armour": 0.0,
   "mass_capacity": 0.0,
   "docked_repair_ratio": 1.0,
   "life_support": 1200,
@@ -695,7 +701,8 @@
    "Cassidy",
    "Donahue"
   ],
-  "mass_capacity": 2.1219957909653e-311,
+  "armour": 0.0,
+  "mass_capacity": 1000.0,
   "docked_repair_ratio": 2.0,
   "life_support": 30000,
   "has_impulse": false,
@@ -799,6 +806,7 @@
    "Renik",
    "Telik"
   ],
+  "armour": 0.0,
   "mass_capacity": 0.0,
   "docked_repair_ratio": 1.0,
   "life_support": 150,
@@ -903,6 +911,7 @@
    "Reek",
    "Zelak"
   ],
+  "armour": 0.0,
   "mass_capacity": 0.0,
   "docked_repair_ratio": 1.0,
   "life_support": 250,
@@ -1007,6 +1016,7 @@
    "Rilat",
    "Dank"
   ],
+  "armour": 0.0,
   "mass_capacity": 0.0,
   "docked_repair_ratio": 1.0,
   "life_support": 500,
@@ -1111,6 +1121,7 @@
    "Rolit",
    "Donk"
   ],
+  "armour": 0.0,
   "mass_capacity": 0.0,
   "docked_repair_ratio": 1.0,
   "life_support": 750,
@@ -1219,7 +1230,8 @@
    "Kild",
    "Kilt"
   ],
-  "mass_capacity": 1.8036964223205e-311,
+  "armour": 0.0,
+  "mass_capacity": 850.0,
   "docked_repair_ratio": 2.0,
   "life_support": 8000,
   "has_impulse": false,
@@ -1323,6 +1335,7 @@
    "Hovel",
    "Quip"
   ],
+  "armour": 0.0,
   "mass_capacity": 0.0,
   "docked_repair_ratio": 1.0,
   "life_support": 150,
@@ -1427,6 +1440,7 @@
    "Trob",
    "Garni"
   ],
+  "armour": 0.0,
   "mass_capacity": 0.0,
   "docked_repair_ratio": 1.0,
   "life_support": 500,
@@ -1531,6 +1545,7 @@
    "Trog",
    "Girni"
   ],
+  "armour": 0.0,
   "mass_capacity": 0.0,
   "docked_repair_ratio": 1.0,
   "life_support": 200,
@@ -1635,6 +1650,7 @@
    "Crin",
    "Hoopla"
   ],
+  "armour": 0.0,
   "mass_capacity": 0.0,
   "docked_repair_ratio": 1.0,
   "life_support": 50,
@@ -1739,6 +1755,7 @@
    "Ellip",
    "Adhok"
   ],
+  "armour": 0.0,
   "mass_capacity": 0.0,
   "docked_repair_ratio": 1.0,
   "life_support": 105,
@@ -1843,6 +1860,7 @@
    "Imir",
    "Unind"
   ],
+  "armour": 0.0,
   "mass_capacity": 0.0,
   "docked_repair_ratio": 1.0,
   "life_support": 125,
@@ -1947,6 +1965,7 @@
    "Narr",
    "Jabbe"
   ],
+  "armour": 0.0,
   "mass_capacity": 0.0,
   "docked_repair_ratio": 1.0,
   "life_support": 160,
@@ -2051,7 +2070,8 @@
    "Hub",
    "Jilk"
   ],
-  "mass_capacity": 5.330245165e-315,
+  "armour": 60.0,
+  "mass_capacity": 0.0,
   "docked_repair_ratio": 1.0,
   "life_support": 55,
   "has_impulse": true,

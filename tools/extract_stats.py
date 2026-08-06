@@ -117,7 +117,11 @@ def decode_ship(b):
         'cloak_repair': rd(b + 0x124),
         'ship_names': name_list(farptr(b + 0x12C), 12),
         'captain_names': name_list(farptr(b + 0x130), 12),
-        'mass_capacity': rd(b + 0x138),
+        # tail per shipdesign.h: armour, then DWT capacity (integer), then
+        # the docked repair multiple (verified: Tug armour 10.0, Starbase
+        # capacity 1000, Outpost 850)
+        'armour': rd(b + 0x134),
+        'mass_capacity': float(struct.unpack_from('<I', data, b + 0x13C)[0]),
         'docked_repair_ratio': rd(b + 0x140),
         'life_support': rw(b + 0x148),
         'has_impulse': rw(b + 0x14A) != 0,

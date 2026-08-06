@@ -57,6 +57,8 @@ pub struct ShipDesign {
     pub cloak_repair: f64,
     pub ship_names: Vec<String>,
     pub captain_names: Vec<String>,
+    #[serde(default)]
+    pub armour: f64,
     pub mass_capacity: f64,
     pub docked_repair_ratio: f64,
     pub life_support: u32,
