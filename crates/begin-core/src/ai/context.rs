@@ -66,6 +66,7 @@ impl Ctx {
             if b.strength_max < strength {
                 b.strength_max = strength;
             }
+            b.steering_cooldown += 1; // weave cadence tick (sub_1E08A 57407)
         }
 
         let s = g.obj(id).ship.as_ref().unwrap();
@@ -162,14 +163,27 @@ impl Ctx {
         } else {
             (0.0, 0.0)
         };
-        // weapon dominance: my strength component / theirs (1000 if none)
+        // weapon dominance (sub_1E42D): 0 when I have no working mounts of
+        // the type, 1000 (flt_35FF4) when the target has none, else the
+        // strength-component ratio
         let my_brain = &my.ship.as_ref().unwrap().brain;
         let (their_phaser, their_torp) = ts
             .map(|s| (s.brain.strength_phaser, s.brain.strength_torp))
             .unwrap_or((0.0, 0.0));
-        let phaser_dom =
-            if their_phaser > 0.0 { my_brain.strength_phaser / their_phaser } else { 1000.0 };
-        let torp_dom = if their_torp > 0.0 { my_brain.strength_torp / their_torp } else { 1000.0 };
+        let phaser_dom = if self.op_banks == 0 {
+            0.0
+        } else if tbanks == 0 {
+            1000.0
+        } else {
+            my_brain.strength_phaser / their_phaser
+        };
+        let torp_dom = if self.op_tubes == 0 {
+            0.0
+        } else if ttubes == 0 {
+            1000.0
+        } else {
+            my_brain.strength_torp / their_torp
+        };
         self.target = Some(TargetCtx {
             id: tid,
             dist,
