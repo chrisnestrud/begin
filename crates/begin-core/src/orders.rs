@@ -127,10 +127,12 @@ pub fn fire_torpedoes(g: &mut Game, id: ObjId, which: &Mounts) -> usize {
     n
 }
 
-/// Evenly-spaced fan offsets across `n` tubes covering `dispersion` degrees.
+/// Dispersion offsets, 1.65 series (linear 0x8B7D): tube j gets
+/// `(j − n div 2) × D / n` — one torpedo always flies the exact solution,
+/// and the fan is asymmetric for even n (n=2 → {−D/2, 0}).
 fn fan_offset(j: usize, n: usize, dispersion: f64) -> f64 {
     if n > 1 && dispersion.abs() > 1e-9 {
-        dispersion * (j as f64 / (n - 1) as f64 - 0.5)
+        (j as f64 - (n / 2) as f64) * dispersion / n as f64
     } else {
         0.0
     }
