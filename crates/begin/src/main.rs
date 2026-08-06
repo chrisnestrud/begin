@@ -204,6 +204,25 @@ fn main() {
     let me = fleets.flagship.expect("ally flagship");
 
     let side = game.obj(me).nation;
+    // Spock's pregame estimate (1.65 fmt at file 0x244AC)
+    {
+        let (odds, against) = game.pregame_odds(side);
+        let officer = game.data.nations[side].officers.first().cloned().unwrap_or_default();
+        let mut num = format!("{odds:.2}");
+        while num.ends_with('0') {
+            num.pop();
+        }
+        let num = num.replace('.', " point ").trim_end_matches(" point ").to_string();
+        game.say(
+            Some(side),
+            &officer,
+            format!(
+                "I estimate our chance of defeating the enemy to be {num} to 1{}.",
+                if against { " against" } else { "" }
+            ),
+            begin_core::events::ReportKind::Ally,
+        );
+    }
     let mut disp = Display::default();
     disp.flash = flash;
     disp.push_plain("");
@@ -297,12 +316,21 @@ fn main() {
         }
     }
 
-    // endgame evaluation (§13)
+    // endgame evaluation (§13; 1.65 adds the numeric score and the roster)
     println!("\r\n");
-    let (_tier, text) = game.evaluation(side);
+    let player_lost = game.get(me).is_none();
+    let (_tier, score, text) = game.evaluation(side, player_lost);
     let nation = &game.data.nations[side];
     println!("{WHITE}{} \u{2014} {}{RESET}", nation.name, nation.command);
     println!("{GREEN}{text}{RESET}");
+    println!();
+    println!("{GREEN}Performance Evaluation: {score:.2}{RESET}");
+    println!();
+    println!("{GREEN}Survivors Reported:{RESET}");
+    for (nat, line) in game.survivors_roster() {
+        let color = if nat == side { GREEN } else { RED };
+        println!("    {color}{line}{RESET}");
+    }
 }
 
 fn setup_environment(g: &mut Game, sc: &Scenario) {

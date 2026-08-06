@@ -429,14 +429,25 @@ pub async fn run_host(cfg: HostConfig) -> Result<(), Box<dyn std::error::Error>>
             .ship
             .and_then(|s| game.get(s).map(|o| o.nation))
             .unwrap_or(host_side);
-        let (_t, text) = game.evaluation(side);
+        let lost = seat.ship.map_or(true, |sid| game.get(sid).is_none());
+        let (_t, score, text) = game.evaluation(side, lost);
         let n = &game.data.nations[side];
-        let labeled = format!("{} \u{2014} {}\r\n{text}", n.name, n.command);
+        let mut labeled =
+            format!("{} \u{2014} {}\r\n{text}\r\nPerformance Evaluation: {score:.2}", n.name, n.command);
+        for (_nat, line) in game.survivors_roster() {
+            labeled.push_str("\r\n    ");
+            labeled.push_str(&line);
+        }
         let _ = lobby.send_reliable(*pid, msg("over", "text", &labeled)).await;
     }
-    let (_t, text) = game.evaluation(host_side);
+    let host_lost = my_ship.map_or(true, |sid| game.get(sid).is_none());
+    let (_t, score, text) = game.evaluation(host_side, host_lost);
     let n = &game.data.nations[host_side];
     println!("\r\n{WHITE}{} \u{2014} {}{RESET}\r\n{GREEN}{text}{RESET}", n.name, n.command);
+    println!("{GREEN}Performance Evaluation: {score:.2}{RESET}");
+    for (_nat, line) in game.survivors_roster() {
+        println!("    {GREEN}{line}{RESET}");
+    }
     // let the reliable channel flush the evaluations before we leave
     tokio::time::sleep(std::time::Duration::from_millis(800)).await;
     lobby.close().await?;

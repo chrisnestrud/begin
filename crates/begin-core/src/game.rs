@@ -26,6 +26,8 @@ pub struct Game {
     pub over: Option<EndState>,
     /// Strength totals at game start, per nation index (endgame rating).
     pub start_strength: Vec<f64>,
+    /// (nation, ship name) of every ship at game start — survivors roster.
+    pub start_ships: Vec<(usize, String)>,
     /// Environment (planets, stations, rings); pure scenery + spawn anchors.
     pub env: crate::env::Environment,
 }
@@ -43,6 +45,7 @@ impl Game {
             fog: false,
             over: None,
             start_strength: vec![0.0; nations],
+            start_ships: Vec::new(),
             env: crate::env::Environment::default(),
         }
     }
@@ -283,13 +286,94 @@ impl Game {
             + loaded as f64 * 6.0
     }
 
+    /// Endgame / pregame-odds appraisal of one ship. V165 is the full 1.65
+    /// formula (linear 0xD67B); V200 is `sub_106F7` fed with UNDAMAGED
+    /// mount counts (`sub_BE37`/`sub_BEAC`) — not the charged/loaded counts
+    /// the AI's in-combat estimator uses.
+    pub fn endgame_strength_of(&self, id: ObjId) -> f64 {
+        let o = self.obj(id);
+        let Some(ship) = o.ship.as_ref() else { return 0.0 };
+        let d = &self.data.ships[ship.design];
+        let undam = |s: &crate::object::Sys| s.dmg == 0;
+        let banks = ship.banks.iter().filter(|b| undam(&b.sys)).count() as f64;
+        let tubes = ship.tubes.iter().filter(|t| undam(&t.sys)).count() as f64;
+        let launchers = ship.launchers.iter().filter(|l| undam(&l.sys)).count() as f64;
+        match self.tuning.model {
+            crate::constants::DamageModel::V165 => {
+                let td = d.torp.as_deref().and_then(|n| self.data.torp(n));
+                let torp_term = td
+                    .map(|t| {
+                        (650.0
+                            + 6.0 * t.velocity
+                            + 5.0 * t.damage
+                            + 5.0 * t.max_time_fuse
+                            + 50.0 * f64::from(t.homing)
+                            - 25.0 * t.warhead_type as f64)
+                            * tubes
+                            / t.charge_time.max(0.01)
+                    })
+                    .unwrap_or(0.0);
+                let mut v = 0.1 * ship.survivors as f64
+                    + d.w1turn / 90.0
+                    + 10.0 * crate::systems::power::max_attainable_warp(self, id)
+                    + (d.shield_absorption + 2.0 + d.shield_recharge) * d.shield_strength
+                    + 3.0 * launchers
+                    + (d.banks_charge + 150.0 + d.banks_range / 50.0) * banks
+                        / d.banks_rate.max(0.01)
+                    + torp_term;
+                if banks == 0.0 && tubes == 0.0 {
+                    v *= 0.5; // weaponless ships appraise at half
+                }
+                v
+            }
+            crate::constants::DamageModel::V200 => {
+                let rails = ship.rails.iter().filter(|r| undam(&r.sys)).count() as f64;
+                let rail_range = d
+                    .rail
+                    .as_deref()
+                    .and_then(|r| self.data.rail(r))
+                    .map(|r| r.range)
+                    .unwrap_or(0.0);
+                1.0 + banks * d.banks_range / STRENGTH_DIVISOR
+                    + rails * rail_range / STRENGTH_DIVISOR
+                    + tubes * 6.0
+            }
+        }
+    }
+
     /// Total live strength for a nation side (`sub_107E4` ≈27070).
     pub fn side_strength(&self, nation: usize) -> f64 {
         self.ship_ids()
             .into_iter()
             .filter(|&i| self.obj(i).nation == nation && !self.obj(i).is_hulk())
-            .map(|i| self.strength_of(i))
+            .map(|i| self.endgame_strength_of(i))
             .sum()
+    }
+
+    /// Endgame survivors roster (1.65 linear 0xD928): every ship that
+    /// started, with survivors or "(destroyed)".
+    pub fn survivors_roster(&self) -> Vec<(usize, String)> {
+        self.start_ships
+            .iter()
+            .map(|(nation, name)| {
+                let line = match self
+                    .ship_ids()
+                    .into_iter()
+                    .find(|&i| self.obj(i).name == *name)
+                {
+                    Some(i) => {
+                        let s = self.obj(i).ship.as_ref().unwrap();
+                        if s.survivors > 0 {
+                            format!("{name} -- {}", s.survivors)
+                        } else {
+                            format!("{name} (destroyed)")
+                        }
+                    }
+                    None => format!("{name} (destroyed)"),
+                };
+                (*nation, line)
+            })
+            .collect()
     }
 
     /// Nations that still field crewed ships.
@@ -309,5 +393,10 @@ impl Game {
         for n in 0..self.data.nations.len() {
             self.start_strength[n] = self.side_strength(n);
         }
+        self.start_ships = self
+            .ship_ids()
+            .into_iter()
+            .map(|i| (self.obj(i).nation, self.obj(i).name.clone()))
+            .collect();
     }
 }

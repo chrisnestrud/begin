@@ -158,9 +158,10 @@ impl Game {
         }
     }
 
-    /// Endgame rating (`sub_104BB` ≈26660): 7 tiers from the score.
-    /// Returns (tier 0..6, message) for the given side.
-    pub fn evaluation(&self, side: usize) -> (usize, String) {
+    /// Endgame rating: 7 tiers from the score. `player_lost` marks a dead
+    /// or aborted player flagship (1.65 charges the enemy side a +500
+    /// bonus for it — dropped in 2.00). Returns (tier 0..6, score, text).
+    pub fn evaluation(&self, side: usize, player_lost: bool) -> (usize, f64, String) {
         let enemy_start: f64 = (0..self.data.nations.len())
             .filter(|&n| n != side)
             .map(|n| self.start_strength[n])
@@ -171,19 +172,34 @@ impl Game {
             .map(|n| self.side_strength(n))
             .sum();
         let ally_now = self.side_strength(side);
-        let ally_loss = ((ally_start - ally_now) / ally_start).clamp(0.0, 1.0);
-        let enemy_loss = if enemy_start > 0.0 {
-            ((enemy_start - enemy_now) / enemy_start).clamp(0.0, 1.0)
-        } else {
-            1.0
+        let score = match self.tuning.model {
+            crate::constants::DamageModel::V165 => {
+                // 1.65 (linear 0xD34C): R = F0/E0;
+                // score = ((F − F0)·R − (E − E0 + bonus)/R) / F0
+                let e0 = enemy_start.max(1.0);
+                let r = ally_start / e0;
+                let bonus = if player_lost { 500.0 } else { 0.0 };
+                ((ally_now - ally_start) * r - (enemy_now - enemy_start + bonus) / r)
+                    / ally_start
+            }
+            crate::constants::DamageModel::V200 => {
+                let ally_loss = ((ally_start - ally_now) / ally_start).clamp(0.0, 1.0);
+                let enemy_loss = if enemy_start > 0.0 {
+                    ((enemy_start - enemy_now) / enemy_start).clamp(0.0, 1.0)
+                } else {
+                    1.0
+                };
+                let odds = (enemy_start / ally_start).max(0.05);
+                (enemy_loss * odds - ally_loss / odds) * 10.0
+            }
         };
-        let odds = (enemy_start / ally_start).max(0.05);
-        // §13: (enemy_losses × odds − ally_losses / odds) scaled
-        let score = (enemy_loss * odds - ally_loss / odds) * 10.0;
-        let tier = crate::constants::ENDGAME_THRESHOLDS
-            .iter()
-            .position(|&t| score > t)
-            .unwrap_or(crate::constants::ENDGAME_THRESHOLDS.len());
+        // 1.65 buckets: >15 / >5 / >2 / >0 / >-2 / >-5 / else — seven tiers
+        // (the 0.0 barely-won/barely-lost boundary is 2.00's omission)
+        let thresholds: &[f64] = match self.tuning.model {
+            crate::constants::DamageModel::V165 => &[15.0, 5.0, 2.0, 0.0, -2.0, -5.0],
+            crate::constants::DamageModel::V200 => &crate::constants::ENDGAME_THRESHOLDS,
+        };
+        let tier = thresholds.iter().position(|&t| score > t).unwrap_or(thresholds.len());
         let tier = tier.min(6);
         let n = &self.data.nations[side];
         let msg = n
@@ -191,6 +207,18 @@ impl Game {
             .get(tier)
             .cloned()
             .unwrap_or_else(|| "Simulation complete.".into());
-        (tier, format!("{}{}", n.endgame_intro, msg))
+        (tier, score, format!("{} {}", n.endgame_intro.trim_end(), msg))
+    }
+
+    /// Spock's pregame odds line (1.65 fmt at file 0x244AC):
+    /// `max(F0,E0)/min(F0,E0)`, "against" when the enemy outguns us.
+    pub fn pregame_odds(&self, side: usize) -> (f64, bool) {
+        let f0 = self.start_strength[side].max(1.0);
+        let e0: f64 = (0..self.data.nations.len())
+            .filter(|&n| n != side)
+            .map(|n| self.start_strength[n])
+            .sum::<f64>()
+            .max(1.0);
+        (f0.max(e0) / f0.min(e0), e0 > f0)
     }
 }
