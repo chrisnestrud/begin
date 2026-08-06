@@ -442,3 +442,30 @@ fn phasers_shoot_down_torpedoes_and_probes() {
     };
     assert!(hurt, "unarmed probe still detonated in place and splashed the shooter");
 }
+
+#[test]
+fn v165_merged_salvo_matches_the_dosbox_measurement() {
+    // Measured in real begin 1.65 under DOSBox: a merged mk7 salvo of 6
+    // (prox 200) collapses a Klingon BC's facing shield from 100% to ~8%
+    // with at most a small hull leak (1 hit, a couple of crew) — the
+    // per-application drain 1 + 0.3*absorbed compounding six times.
+    let (mut g, ally, enemy) = close_duel(23, 6000.0);
+    orders::load_tubes(&mut g, ally, &Mounts::All, Some(200.0));
+    for _ in 0..6 {
+        g.run_cycle();
+    }
+    orders::lock_tubes(&mut g, ally, &Mounts::All, enemy, 0.0, 0.0);
+    g.run_cycle();
+    orders::fire_torpedoes(&mut g, ally, &Mounts::All);
+    for _ in 0..4 {
+        g.run_cycle();
+    }
+    assert!(g.torp_ids().is_empty(), "salvo resolved");
+    let s = g.obj(enemy).ship.as_ref().unwrap();
+    let front = s.shields[0].effective;
+    assert!(
+        front < 30.0,
+        "facing shield collapsed like the original (measured ~8%): {front}"
+    );
+    assert!(s.survivors > 300, "only a small leak reached the crew: {}", s.survivors);
+}
