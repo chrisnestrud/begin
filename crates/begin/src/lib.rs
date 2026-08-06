@@ -3,6 +3,7 @@
 //! identically on the native console and in the browser (begin-web).
 
 pub mod commands;
+pub mod host;
 pub mod fighters;
 pub mod session;
 pub mod ui;

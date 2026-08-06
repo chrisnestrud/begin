@@ -16,3 +16,8 @@ p2p_lobby_client = { package = "p2p-lobby-client", path = "../../../lobbylink/cl
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"], optional = true }
 serde_json = "1"
 bytes = { version = "1", optional = true }
+
+[[bin]]
+name = "begin"
+path = "src/main.rs"
+required-features = ["net"]
