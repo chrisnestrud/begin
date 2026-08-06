@@ -29,7 +29,6 @@ pub fn load_launcher(g: &mut Game, id: ObjId, launcher: usize, prox: f64, time: 
     }
     l.loaded = Some(ProbeState {
         damage: pd.damage,
-        hp: pd.damage.max(10.0),
         time: if time > 0.0 { time.min(pd.max_time_fuse) } else { pd.max_time_fuse },
         prox: if prox > 0.0 { prox.min(pd.max_prox) } else { pd.max_prox },
         arm: pd.arm_time,

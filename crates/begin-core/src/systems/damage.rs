@@ -29,34 +29,32 @@ impl DamageType {
 /// §9 `dealDamageToHull(target, face_angle, damage, type)`.
 /// `face_angle` is the relative bearing the hit arrives from.
 pub fn deal_damage(g: &mut Game, target: ObjId, face_angle: f64, damage: f64, dtype: DamageType) {
-    if g.get(target).is_none() || damage <= 0.0 {
+    if g.get(target).is_none() {
         return;
     }
     let damage = (damage.round()).min(DAMAGE_CAP);
     match g.obj(target).kind {
         Kind::Ship => deal_damage_ship(g, target, face_angle, damage, dtype),
         Kind::Torp => {
-            // only decay-type (plasma) torpedoes are damageable — phaser
-            // point defense burns them down; strength doubles as the plasma
-            // remaining-strength field
+            // any hit detonates a torpedo where it flies (full yield if armed,
+            // dud if not); plasma instead bleeds remaining strength and only
+            // blows once it runs out — the yield scale then fizzles it
             let is_plasma =
                 crate::systems::torpedoes::is_decay_type(g, g.obj(target).torp.as_ref().unwrap().design);
+            let o = g.obj_mut(target);
             if is_plasma {
-                let o = g.obj_mut(target);
                 let t = o.torp.as_mut().unwrap();
                 t.strength -= damage;
-                if t.strength <= 0.0 {
-                    o.det = Det::Expire; // fizzle, no blast
+                if t.strength > 0.0 {
+                    return;
                 }
             }
+            o.det = Det::Detonate;
         }
         Kind::Probe => {
-            let o = g.obj_mut(target);
-            let p = o.probe.as_mut().unwrap();
-            p.hp -= damage;
-            if p.hp <= 0.0 {
-                o.det = Det::Expire; // destroyed before detonation
-            }
+            // one hit of any size sets a probe off at full warhead, in place,
+            // arming timer ignored
+            g.obj_mut(target).det = Det::Detonate;
         }
     }
 }
@@ -392,8 +390,10 @@ fn splash_damage(g: &mut Game, id: ObjId) {
                 (y, DamageType::from_warhead(d.warhead_type), t.salvo.max(1), o.pos)
             }
             Kind::Probe => {
+                // a probe going off deliberately or from damage (det==Detonate)
+                // bypasses the arm timer entirely
                 let p = o.probe.as_ref().unwrap();
-                let armed = p.arm <= 0.0 || p.remote_detonate;
+                let armed = o.det == Det::Detonate || p.arm <= 0.0 || p.remote_detonate;
                 (if armed { p.damage } else { 0.0 }, DamageType::Antimatter, 1, o.pos)
             }
         }

@@ -391,3 +391,45 @@ fn detonate_all_probes_blows_every_active_probe() {
     g.run_cycle();
     assert!(g.probe_ids().is_empty(), "all probes detonated");
 }
+
+#[test]
+fn phasers_shoot_down_torpedoes_and_probes() {
+    let (mut g, ally, enemy) = close_duel(19, 8000.0);
+    orders::load_tubes(&mut g, ally, &Mounts::All, Some(500.0));
+    let n = orders::load_launchers(&mut g, ally, &Mounts::All, 800.0, 20.0);
+    assert!(n > 0, "loaded {n} launchers");
+    for _ in 0..6 {
+        g.run_cycle();
+    }
+
+    // --- an incoming torpedo dies to a single phaser hit ---
+    orders::fire_torpedoes(&mut g, ally, &Mounts::All);
+    g.run_cycle(); // salvo merges and covers ~3000 units
+    let torp = *g.torp_ids().first().expect("torpedo in flight");
+    orders::lock_banks(&mut g, enemy, &Mounts::All, torp);
+    g.run_cycle(); // marks track; torp now ~2000 from the enemy
+    assert!(!g.torp_ids().is_empty(), "torpedo still inbound");
+    orders::fire_phasers(&mut g, enemy, &Mounts::All, Some(45.0));
+    g.run_cycle();
+    assert!(g.torp_ids().is_empty(), "torpedo destroyed by point defense");
+    assert!(g.get(enemy).is_some(), "blast went off well short of the enemy");
+
+    // --- a probe dies to one hit and detonates in place at full yield,
+    // arm timer bypassed (px2 arms in 5, shot down within 3) ---
+    orders::fire_probes(&mut g, ally, &Mounts::All, Some(enemy), None);
+    g.run_cycle();
+    let probe = *g.probe_ids().first().expect("probe in flight");
+    orders::lock_banks(&mut g, ally, &Mounts::All, probe);
+    g.run_cycle();
+    let before: f64 = (0..6).map(|k| shield_pct(&g, ally, k)).sum();
+    orders::fire_phasers(&mut g, ally, &Mounts::All, Some(45.0));
+    g.run_cycle();
+    assert!(g.probe_ids().is_empty(), "probe shot down");
+    let hurt = match g.get(ally) {
+        None => true, // its own blast can be fatal — that's the point
+        Some(o) => o.ship.as_ref().map_or(true, |s| {
+            s.shields.iter().map(|sh| sh.effective).sum::<f64>() < before
+        }),
+    };
+    assert!(hurt, "unarmed probe still detonated in place and splashed the shooter");
+}
