@@ -83,41 +83,67 @@ pub const AI_DISTANCE_BANDS: [f64; 10] =
     [3.0, 1.9, 1.75, 1.5, 1.4, 1.3, 1.2, 1.15, 1.125, 1.1];
 pub const AI_FAR_BAND_MULT: f64 = 0.5; // ≥ 20000
 
-/// Config knobs Daniel patched in the shipped binary (`begin2/notes.txt`).
+/// How hits are applied once they reach a ship. The weapon *formulas*
+/// (splash yield×5, radius ×10, phasers 45/spread) are identical in begin
+/// 1.65 and 2.00 — what 2.00 changed is `dealDamageToHull`: it quartered
+/// shield absorption (flt_3327E 0.25), added an armour pool that silently
+/// eats damage, replaced instant-kill-at-50 with a hull-integrity check,
+/// and made crew losses absolute instead of percentage-based. The old
+/// "45→16.3125, splash ×0.3625" binary hack from notes.txt was only an
+/// average-feel approximation of this difference and is retired.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DamageModel {
+    /// begin.exe v1.65 (`dealDamageToHull` at file 0xF046): full shield
+    /// absorption, no armour pool, any post-shield hit ≥ 50 destroys the
+    /// ship, percentage-based crew losses, no damage cap.
+    V165,
+    /// begin2.exe (asm 25192): absorption ×0.25, armour gate, hull
+    /// integrity, absolute crew losses, 8000 damage cap.
+    V200,
+}
+
+/// Config knobs (`begin2/notes.txt` and the 1.65/2.00 damage split).
 #[derive(Debug, Clone)]
 pub struct Tuning {
-    /// Phaser damage multiplier: 45.0 stock begin2, 16.3125 for "begin1 feel".
-    /// (`phaserDamMult`, asm 99290)
+    /// Damage application profile. Default V165 — the begin 1.65 feel.
+    pub model: DamageModel,
+    /// Phaser damage multiplier (`phaserDamMult` 45.0, asm 99290 — same
+    /// value in 1.65 at file 0x23610).
     pub phaser_dam_mult: f64,
-    /// Splash damage multiplier (`SplashDamMult` 5.0, asm 99276); scale by
-    /// 0.3625 together with phaser_dam_mult=16.3125 for begin1 feel.
+    /// Splash damage multiplier (`SplashDamMult` 5.0, asm 99276 — same in
+    /// 1.65 at file 0x235BF).
     pub splash_dam_mult: f64,
     /// Ship self-destruct yield divisor (`ooDestructDamage`, asm 99239).
-    /// Stock 9.0; Daniel's tuned value 14.0 ("seems to work nicely").
+    /// 1.65 stock 9.0; Daniel's begin2 multiplayer patch 14.0.
     pub oo_destruct_damage: f64,
     /// Server-side planar lock: force mark/z to 0 for all objects.
     pub planar_lock: bool,
 }
 
 impl Default for Tuning {
+    /// The begin 1.65 profile — the feel this port targets.
     fn default() -> Self {
         Tuning {
+            model: DamageModel::V165,
             phaser_dam_mult: 45.0,
             splash_dam_mult: 5.0,
-            oo_destruct_damage: 14.0,
+            oo_destruct_damage: 9.0,
             planar_lock: false,
         }
     }
 }
 
 impl Tuning {
-    /// The "begin1 feel" profile from notes.txt.
+    /// Alias of the default 1.65 profile (kept for the old --begin1 flag).
     pub fn begin1() -> Self {
+        Tuning::default()
+    }
+    /// The begin 2.00 damage model, with Daniel's destruct patch.
+    pub fn begin2() -> Self {
         Tuning {
-            phaser_dam_mult: 16.3125,
-            splash_dam_mult: 5.0 * 0.3625,
+            model: DamageModel::V200,
             oo_destruct_damage: 14.0,
-            planar_lock: false,
+            ..Tuning::default()
         }
     }
 }

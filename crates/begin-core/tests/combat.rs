@@ -134,9 +134,15 @@ fn self_destruct_counts_down_and_blows() {
         g.run_cycle();
     }
     assert!(g.get(ally).is_none(), "ship gone after 5-cycle countdown");
-    // the nearby enemy caught the blast
-    let shields: f64 = (0..6).map(|k| shield_pct(&g, enemy, k)).sum();
-    assert!(shields < 600.0, "blast splashed the bystander: {shields}");
+    // the nearby enemy caught the blast — under the 1.65 model a 700-unit
+    // destruct can vaporize it outright
+    match g.get(enemy) {
+        None => {}
+        Some(_) => {
+            let shields: f64 = (0..6).map(|k| shield_pct(&g, enemy, k)).sum();
+            assert!(shields < 600.0, "blast splashed the bystander: {shields}");
+        }
+    }
 }
 
 #[test]
@@ -310,7 +316,10 @@ fn phaser_bombardment_eventually_kills() {
     orders::lock_banks(&mut g, ally, &Mounts::All, enemy);
     let mut cycles = 0;
     while g.over.is_none() && cycles < 900 {
-        orders::fire_n_charged_banks(&mut g, ally, 99, 45.0);
+        // spread 10 — the combat spread; at 45 the per-hit leak is so small
+        // that 1.65's percentage crew loss floors to zero and a plinking
+        // bombardment can never finish a hulk (faithful to the original)
+        orders::fire_n_charged_banks(&mut g, ally, 99, 10.0);
         g.run_cycle();
         cycles += 1;
     }

@@ -43,7 +43,8 @@ fn main() {
             }
             "--quick" => quick = true,
             "--planar-lock" => tuning.planar_lock = true,
-            "--begin1" => tuning = Tuning::begin1(),
+            "--begin1" => tuning = Tuning::begin1(), // the default; kept for compat
+            "--begin2" => tuning = Tuning::begin2(),
             "--date" => {
                 i += 1;
                 epoch = args
@@ -74,7 +75,7 @@ fn main() {
             }
             x => {
                 eprintln!("unknown option {x}");
-                eprintln!("usage: begin [host|join <code>] [--quick] [--seed N] [--planar-lock] [--begin1]");
+                eprintln!("usage: begin [host|join <code>] [--quick] [--seed N] [--planar-lock] [--begin2]");
                 eprintln!("             [--date YYYY-MM-DD] [--near Body:low|high|rings] [--no-flash]");
                 eprintln!("             [--server URL] [--code C] [--players N] [--coop|--versus]");
                 std::process::exit(2);

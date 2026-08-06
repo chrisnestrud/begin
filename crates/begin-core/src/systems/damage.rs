@@ -32,7 +32,11 @@ pub fn deal_damage(g: &mut Game, target: ObjId, face_angle: f64, damage: f64, dt
     if g.get(target).is_none() {
         return;
     }
-    let damage = (damage.round()).min(DAMAGE_CAP);
+    // the 8000 cap is a 2.00 addition (flt_3327A); 1.65 has none
+    let damage = match g.tuning.model {
+        DamageModel::V165 => damage.round(),
+        DamageModel::V200 => damage.round().min(DAMAGE_CAP),
+    };
     match g.obj(target).kind {
         Kind::Ship => deal_damage_ship(g, target, face_angle, damage, dtype),
         Kind::Torp => {
@@ -79,13 +83,20 @@ fn deal_damage_ship(g: &mut Game, target: ObjId, face_angle: f64, damage: f64, d
         let s = g.obj(target).ship.as_ref().unwrap();
         crate::systems::shields::facing_shield(s, face_angle)
     };
+    // 1.65 shields absorb at full strength; 2.00 quarters both the
+    // capacity and the efficiency term (flt_3327E)
+    let model = g.tuning.model;
+    let absorb_factor = match model {
+        DamageModel::V165 => 1.0,
+        DamageModel::V200 => SHIELD_ABSORB_QUARTER,
+    };
     if let Some(si) = shield_idx {
         let s = g.obj_mut(target).ship.as_mut().unwrap();
         let sh = &mut s.shields[si];
-        let capacity = shield_strength_eu * sh.effective / 100.0 * SHIELD_ABSORB_QUARTER;
+        let capacity = (shield_strength_eu * sh.effective / 100.0 * absorb_factor).floor();
         let incoming = if dtype == DamageType::ShieldBore { damage * 4.0 } else { damage };
         let absorbed = incoming.min(capacity);
-        let mut loss = 1.0 + absorbed * (1.0 - shield_absorption * SHIELD_ABSORB_QUARTER);
+        let mut loss = 1.0 + absorbed * (1.0 - shield_absorption * absorb_factor);
         if sh.state == ShieldState::Reinforced {
             loss *= 0.5;
         }
@@ -101,26 +112,47 @@ fn deal_damage_ship(g: &mut Game, target: ObjId, face_angle: f64, damage: f64, d
         }
     }
 
-    // 4. hull: armour first, then integrity check, crew casualties
+    // 4. hull. 1.65: no armour pool — any post-shield hit >= 50 destroys
+    // the ship outright (file 0xF1A3, cmp si,0x32). 2.00: armour is a
+    // GATE — while it holds it eats the whole hit; once it breaks the
+    // undiminished damage proceeds to the integrity check (asm 25399-25411).
     {
         let hull_integrity = g.obj(target).hull_integrity;
         let s = g.obj_mut(target).ship.as_mut().unwrap();
-        if s.armour > 0.0 {
-            let soaked = s.armour.min(damage);
-            s.armour -= soaked;
-            damage -= soaked;
-            if damage <= 0.0 {
-                return;
-            }
-        }
         s.hull_hits += 1;
-        if damage >= hull_integrity {
-            g.obj_mut(target).det = Det::Destroyed;
-            return;
+        match model {
+            DamageModel::V165 => {
+                if damage >= 50.0 {
+                    g.obj_mut(target).det = Det::Destroyed;
+                    return;
+                }
+            }
+            DamageModel::V200 => {
+                if s.armour > 0.0 {
+                    s.armour -= damage;
+                    if s.armour > 0.0 {
+                        return;
+                    }
+                    s.armour = 0.0;
+                }
+                if damage >= hull_integrity {
+                    g.obj_mut(target).det = Det::Destroyed;
+                    return;
+                }
+            }
         }
     }
     let dmg_i = damage as i32;
-    let cas = g.rng.irange(0, dmg_i) + g.rng.irange(0, dmg_i);
+    // crew: 1.65 loses a percentage of the complement (file 0xF1B4);
+    // 2.00 an absolute count
+    let cas = match model {
+        DamageModel::V165 => {
+            let crew = g.obj(target).ship.as_ref().unwrap().survivors;
+            (g.rng.irange(0, dmg_i) as f64 / 100.0 * crew as f64).floor() as i32
+                + g.rng.irange(0, dmg_i / 3)
+        }
+        DamageModel::V200 => g.rng.irange(0, dmg_i) + g.rng.irange(0, dmg_i),
+    };
     let boarder_cas = g.rng.irange(0, dmg_i);
     let name = g.obj(target).name.clone();
     let survivors = {

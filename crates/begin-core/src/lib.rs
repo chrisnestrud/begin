@@ -16,7 +16,7 @@ pub mod orders;
 pub mod scenario;
 pub mod systems;
 
-pub use constants::Tuning;
+pub use constants::{DamageModel, Tuning};
 pub use data::GameData;
 pub use game::Game;
 pub use object::{Control, ObjId};
