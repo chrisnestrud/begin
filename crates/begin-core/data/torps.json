@@ -8,10 +8,10 @@
   "max_time_fuse": 6.0,
   "max_prox": 500.0,
   "homing": false,
-  "speed_variance": 0.05,
+  "speed_variance": 0.07,
   "warhead_type": 0,
   "charge_time": 3.0,
-  "min_prox": 10.0
+  "load_energy": 10.0
  },
  {
   "name": "mk8",
@@ -25,7 +25,7 @@
   "speed_variance": 0.05,
   "warhead_type": 0,
   "charge_time": 4.0,
-  "min_prox": 15.0
+  "load_energy": 15.0
  },
  {
   "name": "ktx",
@@ -39,7 +39,7 @@
   "speed_variance": 0.07,
   "warhead_type": 0,
   "charge_time": 3.0,
-  "min_prox": 15.0
+  "load_energy": 15.0
  },
  {
   "name": "plasma",
@@ -53,7 +53,7 @@
   "speed_variance": 0.12,
   "warhead_type": 2,
   "charge_time": 6.0,
-  "min_prox": 400.0
+  "load_energy": 400.0
  },
  {
   "name": "Xplasma",
@@ -67,7 +67,7 @@
   "speed_variance": 0.09,
   "warhead_type": 2,
   "charge_time": 5.0,
-  "min_prox": 225.0
+  "load_energy": 225.0
  },
  {
   "name": "opbt",
@@ -81,7 +81,7 @@
   "speed_variance": 0.22,
   "warhead_type": 0,
   "charge_time": 3.0,
-  "min_prox": 10.0
+  "load_energy": 10.0
  },
  {
   "name": "oshb",
@@ -95,6 +95,6 @@
   "speed_variance": 0.22,
   "warhead_type": 1,
   "charge_time": 5.0,
-  "min_prox": 30.0
+  "load_energy": 30.0
  }
 ]

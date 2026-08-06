@@ -20,7 +20,14 @@
     "Unacceptable losses. You are relieved of command.",
     "A disaster. Consider a career in freight."
    ],
-   "officers": ["Adama", "Chen", "Osei", "Valdez", "Petrova", "Singh"]
+   "officers": [
+    "Adama",
+    "Chen",
+    "Osei",
+    "Valdez",
+    "Petrova",
+    "Singh"
+   ]
   }
  ],
  "rails": [
@@ -58,8 +65,8 @@
    "speed_variance": 0.03,
    "warhead_type": 0,
    "charge_time": 2.0,
-   "min_prox": 10.0,
-   "kinetic": true
+   "kinetic": true,
+   "load_energy": 22.0
   },
   {
    "name": "lance",
@@ -73,8 +80,8 @@
    "speed_variance": 0.05,
    "warhead_type": 0,
    "charge_time": 4.0,
-   "min_prox": 50.0,
-   "kinetic": false
+   "kinetic": false,
+   "load_energy": 16.0
   }
  ],
  "probes": [
@@ -140,8 +147,22 @@
    "can_cloak": false,
    "cloak_energy": 0.0,
    "cloak_repair": 0.0,
-   "ship_names": ["Galactica", "Ares", "Poseidon", "Hyperion", "Atlas", "Prometheus"],
-   "captain_names": ["Adama", "Cain", "Nagala", "Corman", "Shaw", "Riker"],
+   "ship_names": [
+    "Galactica",
+    "Ares",
+    "Poseidon",
+    "Hyperion",
+    "Atlas",
+    "Prometheus"
+   ],
+   "captain_names": [
+    "Adama",
+    "Cain",
+    "Nagala",
+    "Corman",
+    "Shaw",
+    "Riker"
+   ],
    "mass_capacity": 400.0,
    "docked_repair_ratio": 2.0,
    "life_support": 5600,
@@ -154,7 +175,20 @@
    "destruct_energy": 80.0,
    "probes_carried": 12,
    "torps_carried": 90,
-   "crew_names": ["Tyrol", "Gaeta", "Dualla", "Kelly", "Hoshi", "Figurski", "Prosna", "Cally", "Socinus", "Seelix", "Davis", "Reyes"],
+   "crew_names": [
+    "Tyrol",
+    "Gaeta",
+    "Dualla",
+    "Kelly",
+    "Hoshi",
+    "Figurski",
+    "Prosna",
+    "Cally",
+    "Socinus",
+    "Seelix",
+    "Davis",
+    "Reyes"
+   ],
    "rails": 8,
    "rail": "rg60",
    "fighters": 24,
@@ -209,8 +243,28 @@
    "can_cloak": false,
    "cloak_energy": 0.0,
    "cloak_repair": 0.0,
-   "ship_names": ["Hotdog", "Athena", "Apollo", "Starbuck", "Helo", "Kat", "Racetrack", "Crashdown", "Chuckles", "Stinger", "Jolly", "Drake"],
-   "captain_names": ["Adama", "Thrace", "Agathon", "Edmondson", "Katraine", "Costanza"],
+   "ship_names": [
+    "Hotdog",
+    "Athena",
+    "Apollo",
+    "Starbuck",
+    "Helo",
+    "Kat",
+    "Racetrack",
+    "Crashdown",
+    "Chuckles",
+    "Stinger",
+    "Jolly",
+    "Drake"
+   ],
+   "captain_names": [
+    "Adama",
+    "Thrace",
+    "Agathon",
+    "Edmondson",
+    "Katraine",
+    "Costanza"
+   ],
    "mass_capacity": 0.0,
    "docked_repair_ratio": 0.0,
    "life_support": 4,
@@ -223,7 +277,12 @@
    "destruct_energy": 10.0,
    "probes_carried": 0,
    "torps_carried": 6,
-   "crew_names": ["Tyrol", "Cally", "Seelix", "Figurski"],
+   "crew_names": [
+    "Tyrol",
+    "Cally",
+    "Seelix",
+    "Figurski"
+   ],
    "rails": 2,
    "rail": "rg25",
    "fighters": 0,
@@ -278,8 +337,22 @@
    "can_cloak": false,
    "cloak_energy": 0.0,
    "cloak_repair": 0.0,
-   "ship_names": ["Achilles", "Ajax", "Perseus", "Theseus", "Orion", "Hector"],
-   "captain_names": ["Nakamura", "Reyes", "Okafor", "Lindqvist", "Marsh", "Iyer"],
+   "ship_names": [
+    "Achilles",
+    "Ajax",
+    "Perseus",
+    "Theseus",
+    "Orion",
+    "Hector"
+   ],
+   "captain_names": [
+    "Nakamura",
+    "Reyes",
+    "Okafor",
+    "Lindqvist",
+    "Marsh",
+    "Iyer"
+   ],
    "mass_capacity": 8.0,
    "docked_repair_ratio": 1.5,
    "life_support": 440,
@@ -292,7 +365,16 @@
    "destruct_energy": 30.0,
    "probes_carried": 6,
    "torps_carried": 40,
-   "crew_names": ["Vasquez", "Holt", "Brandt", "Kim", "Sorensen", "Doyle", "Mbeki", "Tanner"],
+   "crew_names": [
+    "Vasquez",
+    "Holt",
+    "Brandt",
+    "Kim",
+    "Sorensen",
+    "Doyle",
+    "Mbeki",
+    "Tanner"
+   ],
    "rails": 4,
    "rail": "rg60",
    "fighters": 2,

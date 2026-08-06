@@ -111,7 +111,7 @@ pub struct TorpDesign {
     /// damageable by phaser point-defense)
     pub warhead_type: u8,
     pub charge_time: f64,
-    pub min_prox: f64,
+    pub load_energy: f64,
     /// Near-future: contact-fuse ballistic kinetic round (no splash)
     #[serde(default)]
     pub kinetic: bool,

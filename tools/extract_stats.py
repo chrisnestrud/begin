@@ -187,8 +187,8 @@ for k in range(TORP_N):
         'homing': rw(b + 0x34) != 0,     # plasma/Xplasma home
         'speed_variance': rd(b + 0x38),
         'warhead_type': rw(b + 0x40),    # 0 normal, 1 shield-bore, 2 plasma decay
-        'charge_time': rd(b + 0x42),     # tube charge cycles (mk7=3 ✓ manual)
-        'min_prox': rd(b + 0x4A),
+        'charge_time': rd(b + 0x42),     # load_cycles (mk7=3 ✓ manual)
+        'load_energy': rd(b + 0x4A),     # pool cost to load (plasma=400!)
     })
 
 # ---------- probe designs (contiguous array, stride 0x3E) ----------
@@ -262,6 +262,16 @@ if os.path.exists(exe165):
                 print(f"stats165: {key[0]} {key[1]}: banks {s['banks']}->{o['banks']} "
                       f"tubes {s['tubes']}->{o['tubes']} launchers {s['launchers']}->{o['launchers']}")
             s.update(o)
+    # v1.65 weapon-data differences (from the begin.exe records; the port
+    # targets the 1.65 feel): mkvii speed variance 0.07 (2.00 lowered it to
+    # 0.05 — 1.65 record at file 0x1DA2E), klpp time fuse 20 (2.00 raised
+    # it to 25 — record 0x1DBBC).
+    for t in torps:
+        if t['name'] == 'mk7':
+            t['speed_variance'] = 0.07
+    for p in probes:
+        if p['name'] == 'klpp':
+            p['max_time_fuse'] = 20.0
 else:
     print('begin.exe (v1.65) not found; keeping begin2 mount counts')
 

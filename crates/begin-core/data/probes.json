@@ -27,7 +27,7 @@
   "velocity": 2.0,
   "damage": 20.0,
   "arm_time": 6.0,
-  "max_time_fuse": 25.0,
+  "max_time_fuse": 20.0,
   "max_prox": 1000.0,
   "homing": true,
   "scan_range": 0.0

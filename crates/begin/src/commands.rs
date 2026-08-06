@@ -714,7 +714,7 @@ impl<'a> Parser<'a> {
                         .map(|t| {
                             format!(
                                 "Proximity fuse ({:.0} to {:.0}, 0 for maximum)?",
-                                t.min_prox.max(100.0),
+                                100.0,
                                 t.max_prox
                             )
                         })
@@ -1342,8 +1342,8 @@ impl<'a> Parser<'a> {
                         let t = self.g.data.torp(&n).cloned().ok_or("Unknown torpedo class.")?;
                         self.say(&format!("{} - {}", t.name, t.desc));
                         self.say(&format!(
-                            "VELOCITY: warp {}   WARHEAD: {}   PROX: {}-{}",
-                            t.velocity, t.damage, t.min_prox, t.max_prox
+                            "VELOCITY: warp {}   WARHEAD: {}   PROX: 100-{}   LOAD: {}eu",
+                            t.velocity, t.damage, t.max_prox, t.load_energy
                         ));
                         self.say(&format!(
                             "ARM: {}  FUSE: {}  CHARGE TIME: {}  HOMING: {}",

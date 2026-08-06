@@ -24,8 +24,8 @@ pub fn tube_step(g: &mut Game) {
 }
 
 /// Tube charging (`sub_B351`, same layout as bank charging) and auto-reload.
-/// A tube charges over the torpedo's charge_time cycles (manual: the -, =, ≡
-/// symbols are the last three cycles), paying damage/charge_time energy per
+/// A tube charges over the torpedo's load_cycles (manual: the -, =, ≡
+/// symbols are the last three cycles), paying load_energy/load_cycles per
 /// cycle, and loads at 100% — ready the *following* cycle.
 fn charge_and_load(g: &mut Game, id: ObjId) {
     let design = g.obj(id).ship.as_ref().unwrap().design;
@@ -45,7 +45,8 @@ fn charge_and_load(g: &mut Game, id: ObjId) {
         }
         // charge toward 100%
         let step_pct = 100.0 / td.charge_time.max(0.01);
-        let cost = td.damage / td.charge_time.max(0.01);
+        // loading draws load_energy over load_cycles (plasma 400/6!)
+        let cost = td.load_energy / td.charge_time.max(0.01);
         if pool < cost {
             continue;
         }
@@ -55,7 +56,7 @@ fn charge_and_load(g: &mut Game, id: ObjId) {
             // load a torpedo with the ordered prox, clamped to the design
             // limits and the global 100-unit floor (flt_318BD, both versions)
             let prox = if tube.prox > 0.0 {
-                tube.prox.clamp(td.min_prox.max(100.0), td.max_prox)
+                tube.prox.clamp(100.0, td.max_prox)
             } else {
                 td.max_prox
             };
