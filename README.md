@@ -61,6 +61,20 @@ on the scope (`flash off` or `--no-flash` disables).
   bad idea, and so is lithobraking. With the `spice` cargo feature and
   `BEGIN_SPICE_KERNEL=de440.bsp`, positions come from `anise` instead.
 
+## In the browser
+
+**https://fireflyk64.github.io/begin/** runs the same game on anything
+with a browser (Chromebooks included): an xterm.js console driving the
+identical Rust engine compiled to WebAssembly — the shared
+`begin::session::Session` state machine guarantees transcript-identical
+play, verified byte-for-byte against the native console
+(`tools/wasm_transcript_test.mjs`).
+
+Cross-play: a console player hosts (`begin host`) and browser players
+join with the room code — the page is a dumb terminal for the frames the
+host renders, exactly like `begin join`. Rebuild and redeploy with
+`tools/build_web.sh` (output in `web/dist/`).
+
 ## Multiplayer (peer-to-peer via lobbylink)
 
 No game server — the host's process owns the simulation and every other
