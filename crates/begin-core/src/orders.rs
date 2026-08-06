@@ -98,17 +98,19 @@ pub fn turn_banks(g: &mut Game, id: ObjId, which: &Mounts, mark: f64) {
     }
 }
 
-/// `enable/disable banks <list>`.
-pub fn enable_banks(g: &mut Game, id: ObjId, which: &Mounts, enabled: bool) {
+/// `enable/disable banks <list>`. 1.65 refuses the order on damaged banks
+/// and a disable does NOT clear an armed fire flag (the queued shot still
+/// resolves). Returns how many banks changed.
+pub fn enable_banks(g: &mut Game, id: ObjId, which: &Mounts, enabled: bool) -> usize {
     let s = g.obj_mut(id).ship.as_mut().unwrap();
+    let mut n = 0;
     for (k, b) in s.banks.iter_mut().enumerate() {
-        if which.contains(k) {
+        if which.contains(k) && b.sys.dmg == 0 {
             b.enabled = enabled;
-            if !enabled {
-                b.fire = false;
-            }
+            n += 1;
         }
     }
+    n
 }
 
 // ---- torpedo tubes ----

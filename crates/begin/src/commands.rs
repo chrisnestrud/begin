@@ -911,7 +911,7 @@ impl<'a> Parser<'a> {
         self.skip_noise();
         if let Some(t) = self.peek() {
             if let Ok(r) = t.parse::<f64>() {
-                self.disp.scan_range = r.clamp(1000.0, 500000.0);
+                self.disp.scan_range = r.clamp(100.0, 50000.1); // 1.65 bounds
                 return Ok(Outcome::Stay);
             }
         } else {
