@@ -52,9 +52,10 @@ fn charge_and_load(g: &mut Game, id: ObjId) {
         pool -= cost;
         tube.charge = (tube.charge + step_pct).min(100.0);
         if tube.charge >= 100.0 {
-            // load a torpedo with the ordered prox (clamped to design limits)
+            // load a torpedo with the ordered prox, clamped to the design
+            // limits and the global 100-unit floor (flt_318BD, both versions)
             let prox = if tube.prox > 0.0 {
-                tube.prox.clamp(td.min_prox, td.max_prox)
+                tube.prox.clamp(td.min_prox.max(100.0), td.max_prox)
             } else {
                 td.max_prox
             };

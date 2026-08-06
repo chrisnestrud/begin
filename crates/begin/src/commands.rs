@@ -704,7 +704,23 @@ impl<'a> Parser<'a> {
                     self.i += 1;
                 }
                 let which = self.mounts_bounded();
-                let prox = self.fuse(&["prox", "proximity"], "Proximity fuse? (0 for maximum)")?;
+                // show the real bounds like the original: "(100 to 500)"
+                let prompt = {
+                    let di = self.g.obj(self.me).ship.as_ref().unwrap().design;
+                    self.g.data.ships[di]
+                        .torp
+                        .as_deref()
+                        .and_then(|n| self.g.data.torps.iter().find(|t| t.name == n))
+                        .map(|t| {
+                            format!(
+                                "Proximity fuse ({:.0} to {:.0}, 0 for maximum)?",
+                                t.min_prox.max(100.0),
+                                t.max_prox
+                            )
+                        })
+                        .unwrap_or_else(|| "Proximity fuse? (0 for maximum)".into())
+                };
+                let prox = self.fuse(&["prox", "proximity"], &prompt)?;
                 // 0 = leave the design default (max prox at load time)
                 orders::load_tubes(self.g, self.me, &which, (prox > 0.0).then_some(prox));
                 self.officer(if prox > 0.0 {
@@ -716,9 +732,26 @@ impl<'a> Parser<'a> {
             }
             Some("launchers") => {
                 let which = self.mounts_bounded();
-                let prox = self.fuse(&["prox", "proximity"], "Proximity fuse? (0 for maximum)")?;
-                let time =
-                    self.fuse(&["time", "fuse"], "Time fuse? (cycles to detonation, 0 for maximum)")?;
+                let bounds = {
+                    let di = self.g.obj(self.me).ship.as_ref().unwrap().design;
+                    self.g.data.ships[di]
+                        .probe
+                        .as_deref()
+                        .and_then(|n| self.g.data.probes.iter().find(|p| p.name == n))
+                        .map(|p| (p.max_prox, p.max_time_fuse))
+                };
+                let (pq, tq) = match bounds {
+                    Some((mp, mt)) => (
+                        format!("Proximity fuse (50 to {mp:.0}, 0 for maximum)?"),
+                        format!("Time fuse (5 to {mt:.0}, 0 for maximum)?"),
+                    ),
+                    None => (
+                        "Proximity fuse? (0 for maximum)".into(),
+                        "Time fuse? (cycles to detonation, 0 for maximum)".into(),
+                    ),
+                };
+                let prox = self.fuse(&["prox", "proximity"], &pq)?;
+                let time = self.fuse(&["time", "fuse"], &tq)?;
                 let n = orders::load_launchers(self.g, self.me, &which, prox, time);
                 if n == 0 {
                     return Err("No launchers could be loaded.".into());

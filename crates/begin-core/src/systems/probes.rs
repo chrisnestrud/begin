@@ -27,10 +27,11 @@ pub fn load_launcher(g: &mut Game, id: ObjId, launcher: usize, prox: f64, time: 
     if l.sys.destroyed() || l.loaded.is_some() {
         return false;
     }
+    // 1.65 prompt bounds: prox 50..design max, time fuse 5..design max
     l.loaded = Some(ProbeState {
         damage: pd.damage,
-        time: if time > 0.0 { time.min(pd.max_time_fuse) } else { pd.max_time_fuse },
-        prox: if prox > 0.0 { prox.min(pd.max_prox) } else { pd.max_prox },
+        time: if time > 0.0 { time.clamp(5.0, pd.max_time_fuse) } else { pd.max_time_fuse },
+        prox: if prox > 0.0 { prox.clamp(50.0, pd.max_prox) } else { pd.max_prox },
         arm: pd.arm_time,
         design: probe_idx,
         code: code.clone(),
