@@ -1,13 +1,15 @@
 //! Player orders — the 22 ally missions (§12.8; `sub_1F3B8` 59564).
 
-use crate::ai::behavior::{combat_speed, phaser_range_maneuver, torp_range_maneuver, weave_to};
+use crate::ai::behavior::{
+    combat_speed, phaser_range_maneuver, set_course_helm, set_pursue_helm, torp_range_maneuver,
+    weave_to,
+};
 use crate::ai::{Ctx, Mission};
 use crate::constants::*;
 use crate::events::ReportKind;
 use crate::game::Game;
 use crate::math::*;
 use crate::object::*;
-use crate::orders;
 use crate::systems::helm::{apparent_dist, target_bearing_mark};
 
 /// Loyalty gate at order time (`sub_200BD` 61163): allies disobey with
@@ -78,10 +80,24 @@ pub fn cancel_order(g: &mut Game, id: ObjId) {
     b.hold_fire = false;
 }
 
-/// Per-cycle mission executor (`sub_1F3B8`).
-pub fn execute(g: &mut Game, ctx: &mut Ctx) {
+/// Set course+mark helm, reporting whether anything changed (missions steer
+/// in 3D; the course/warp pair goes through `set_course_helm`).
+fn set_course_mark(g: &mut Game, id: ObjId, course: f64, mark: f64) -> bool {
+    let course = norm360(course);
+    let mark = mark.clamp(-90.0, 90.0);
+    let o = g.obj_mut(id);
+    let changed = o.helm != HelmMode::Course || o.desired_course != course || o.desired_mark != mark;
+    o.helm = HelmMode::Course;
+    o.desired_course = course;
+    o.desired_mark = mark;
+    changed
+}
+
+/// Per-cycle mission executor (`sub_1F3B8`). Returns whether it acted (the
+/// dispatcher runs housekeeping only when it didn't).
+pub fn execute(g: &mut Game, ctx: &mut Ctx) -> bool {
     let Some(mission) = g.obj(ctx.id).ship.as_ref().unwrap().brain.mission.clone() else {
-        return;
+        return false;
     };
     let me = ctx.id;
     let side = ctx.side;
@@ -94,13 +110,10 @@ pub fn execute(g: &mut Game, ctx: &mut Ctx) {
                 (t.course, t.warp)
             };
             if (dist - range).abs() < AI_ESCORT_TOLERANCE {
-                let o = g.obj_mut(me);
-                o.helm = HelmMode::Course;
-                o.desired_course = t_course;
-                o.desired_warp = t_warp;
+                set_course_helm(g, me, t_course, t_warp)
             } else {
                 let warp = if dist > range { (t_warp * 1.5).max(2.0) } else { (t_warp * 0.5).max(0.5) };
-                orders::pursue(g, me, ship, Some(warp), false);
+                set_pursue_helm(g, me, ship, warp)
             }
         }
         Mission::Attack { ship } => {
@@ -115,12 +128,15 @@ pub fn execute(g: &mut Game, ctx: &mut Ctx) {
             if ctx.target.as_ref().map(|t| t.id) != Some(ship) {
                 ctx.cache_target(g, ship);
             }
-            weave_to(g, ctx, 1);
+            weave_to(g, ctx, 1)
         }
         Mission::Course { course } => {
+            let course = norm360(course);
             let o = g.obj_mut(me);
+            let changed = o.helm != HelmMode::Course || o.desired_course != course;
             o.helm = HelmMode::Course;
-            o.desired_course = norm360(course);
+            o.desired_course = course;
+            changed
         }
         Mission::Phaser { ship } => {
             if g.get(ship).is_none() || g.obj(ship).is_hulk() {
@@ -132,7 +148,7 @@ pub fn execute(g: &mut Game, ctx: &mut Ctx) {
                 b.target_ordered = true;
             }
             ctx.cache_target(g, ship);
-            phaser_range_maneuver(g, ctx);
+            phaser_range_maneuver(g, ctx)
         }
         Mission::Torpedo { ship } => {
             if g.get(ship).is_none() || g.obj(ship).is_hulk() {
@@ -144,7 +160,7 @@ pub fn execute(g: &mut Game, ctx: &mut Ctx) {
                 b.target_ordered = true;
             }
             ctx.cache_target(g, ship);
-            torp_range_maneuver(g, ctx);
+            torp_range_maneuver(g, ctx)
         }
         Mission::Probe { ship } => {
             if g.get(ship).is_none() {
@@ -159,30 +175,26 @@ pub fn execute(g: &mut Game, ctx: &mut Ctx) {
             // steer to bearing; evade once probes are chasing (§12.8 #6)
             let chasing = g.probe_ids().into_iter().any(|p| g.obj(p).pursue == Some(ship));
             if chasing {
-                weave_to(g, ctx, 2);
+                weave_to(g, ctx, 2)
             } else {
                 let (b, m) = target_bearing_mark(g, me, ship, side);
-                let o = g.obj_mut(me);
-                o.helm = HelmMode::Course;
-                o.desired_course = b;
-                o.desired_mark = m;
+                set_course_mark(g, me, b, m)
             }
         }
         Mission::Standoff => {
-            let Some(t) = ctx.target.as_ref() else { return };
+            let Some(t) = ctx.target.as_ref() else { return false };
             let aggression = g.obj(me).ship.as_ref().unwrap().brain.aggression;
             let keep = (1.0 - aggression) * AI_STANDOFF_AGGR + AI_STANDOFF_BASE;
             if t.dist < keep - AI_STANDOFF_JITTER {
-                weave_to(g, ctx, 2);
+                weave_to(g, ctx, 2)
             } else if t.dist > keep + AI_STANDOFF_JITTER {
-                weave_to(g, ctx, 1);
+                weave_to(g, ctx, 1)
             } else if g.rng.percent(33.0) {
                 let course = g.rng.range(0.0, 360.0);
                 let warp = combat_speed(g, ctx);
-                let o = g.obj_mut(me);
-                o.helm = HelmMode::Course;
-                o.desired_course = norm360(course);
-                o.desired_warp = warp;
+                set_course_helm(g, me, course, warp)
+            } else {
+                false
             }
         }
         Mission::Transport { count, ship } => {
@@ -205,10 +217,11 @@ pub fn execute(g: &mut Game, ctx: &mut Ctx) {
                     } else {
                         clear(g, me);
                     }
+                    true
                 }
                 Err(_) => {
                     // close in until the beam works
-                    orders::pursue(g, me, ship, Some(3.0), false);
+                    set_pursue_helm(g, me, ship, 3.0)
                 }
             }
         }
@@ -221,10 +234,11 @@ pub fn execute(g: &mut Game, ctx: &mut Ctx) {
             }
             if crate::systems::tractor::dock(g, me, base).is_ok() {
                 clear(g, me);
+                true
             } else {
                 let dist = apparent_dist(g, me, base, side);
                 let warp = if dist > 5000.0 { combat_speed(g, ctx) } else { 1.0 };
-                orders::pursue(g, me, base, Some(warp), false);
+                set_pursue_helm(g, me, base, warp)
             }
         }
         Mission::Undock | Mission::Release | Mission::HoldFire => clear(g, me),
@@ -248,11 +262,11 @@ pub fn execute(g: &mut Game, ctx: &mut Ctx) {
                         "She's too heavy for our tractor beam.".into(),
                         ReportKind::Ally,
                     );
-                    return clear(g, me);
+                    clear(g, me);
+                    return true;
                 }
                 if crate::systems::tractor::engage_tractor(g, me, ship).is_err() {
-                    orders::pursue(g, me, ship, Some(2.0), false);
-                    return;
+                    return set_pursue_helm(g, me, ship, 2.0);
                 }
             }
             // drag toward the destination at warp = ratio
@@ -269,13 +283,15 @@ pub fn execute(g: &mut Game, ctx: &mut Ctx) {
                 let captain = g.obj(me).ship.as_ref().unwrap().captain.clone();
                 g.say(Some(side), &captain, "Tow complete.".into(), ReportKind::Ally);
                 clear(g, me);
+                true
             } else {
                 let (b, m) = target_bearing_mark(g, me, dest, side);
+                let steered = set_course_mark(g, me, b, m);
+                let warp = ratio.max(0.5);
                 let o = g.obj_mut(me);
-                o.helm = HelmMode::Course;
-                o.desired_course = b;
-                o.desired_mark = m;
-                o.desired_warp = ratio.max(0.5);
+                let warp_changed = o.desired_warp != warp;
+                o.desired_warp = warp;
+                steered || warp_changed
             }
         }
         Mission::Recover { ship } => {
@@ -284,13 +300,18 @@ pub fn execute(g: &mut Game, ctx: &mut Ctx) {
             }
             if crate::systems::tractor::dock(g, ship, me).is_ok() {
                 clear(g, me);
+                true
+            } else {
+                false
             }
         }
         Mission::Eject { ship } => {
-            if g.get(ship).is_some() {
+            let acted = g.get(ship).is_some();
+            if acted {
                 crate::systems::tractor::undock(g, ship);
             }
             clear(g, me);
+            acted
         }
         Mission::Approach { ship, range } => {
             let Some(_) = g.get(ship) else { return clear(g, me) };
@@ -301,18 +322,12 @@ pub fn execute(g: &mut Game, ctx: &mut Ctx) {
                 (t.course, t.warp)
             };
             if dist < range {
-                let o = g.obj_mut(me);
-                o.helm = HelmMode::Course;
-                o.desired_course = t_course;
-                o.desired_warp = t_warp;
+                set_course_helm(g, me, t_course, t_warp)
             } else if dist > range * AI_STATION_KEEP_OUTER {
-                orders::pursue(g, me, ship, Some(t_warp + 2.0), false);
+                set_pursue_helm(g, me, ship, t_warp + 2.0)
             } else {
                 let (b, m) = target_bearing_mark(g, me, ship, side);
-                let o = g.obj_mut(me);
-                o.helm = HelmMode::Course;
-                o.desired_course = b;
-                o.desired_mark = m;
+                set_course_mark(g, me, b, m)
             }
         }
         Mission::Tractor { ship } => {
@@ -321,26 +336,34 @@ pub fn execute(g: &mut Game, ctx: &mut Ctx) {
             }
             if crate::systems::tractor::engage_tractor(g, me, ship).is_ok() {
                 clear(g, me);
+                true
             } else {
-                orders::pursue(g, me, ship, Some(2.0), false);
+                set_pursue_helm(g, me, ship, 2.0)
             }
         }
         Mission::Stop => {
-            g.obj_mut(me).desired_warp = 0.0;
+            let o = g.obj_mut(me);
+            let changed = o.desired_warp != 0.0;
+            o.desired_warp = 0.0;
+            changed
         }
         Mission::Defend { ship } => {
             let Some(_) = g.get(ship) else { return clear(g, me) };
             let dist = apparent_dist(g, me, ship, side);
             if dist > AI_DEFEND_RADIUS {
                 let warp = combat_speed(g, ctx);
-                orders::pursue(g, me, ship, Some(warp), false);
+                set_pursue_helm(g, me, ship, warp)
             } else if ctx.target.is_some() {
-                crate::ai::behavior::default_maneuver(g, ctx);
+                crate::ai::behavior::default_maneuver(g, ctx)
+            } else {
+                false
             }
         }
     }
 }
 
-fn clear(g: &mut Game, id: ObjId) {
+/// Dissolve the mission; reports "didn't act" so housekeeping still runs.
+fn clear(g: &mut Game, id: ObjId) -> bool {
     g.obj_mut(id).ship.as_mut().unwrap().brain.mission = None;
+    false
 }

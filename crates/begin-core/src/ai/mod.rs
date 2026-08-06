@@ -141,9 +141,9 @@ pub fn ai_think(g: &mut Game, id: ObjId) {
         return;
     }
 
-    // weapons block (`sub_20D07`): phasers → torpedoes → probes → boarding
+    // weapons block (`sub_20D07`): phasers → torpedoes → probes → boarding.
+    // A weapon action ends the cycle (sub_20D55 — no housekeeping).
     if behavior::weapons(g, &mut ctx) {
-        housekeeping(g, &ctx); // keep tubes loading even on weapon cycles
         return;
     }
 
@@ -156,21 +156,24 @@ pub fn ai_think(g: &mut Game, id: ObjId) {
         let b = &g.obj(id).ship.as_ref().unwrap().brain;
         (b.mission.is_some(), b.stance)
     };
-    if has_mission {
-        missions::execute(g, &mut ctx);
+    let acted = if has_mission {
+        missions::execute(g, &mut ctx)
     } else if stance != Stance::Normal {
-        behavior::stance_helm(g, &ctx);
+        behavior::stance_helm(g, &ctx)
     } else {
         behavior::morale(g, &ctx);
         let stance_now = g.obj(id).ship.as_ref().unwrap().brain.stance;
         if stance_now != Stance::Normal {
-            behavior::stance_helm(g, &ctx);
+            behavior::stance_helm(g, &ctx)
         } else {
-            behavior::default_maneuver(g, &ctx);
+            behavior::default_maneuver(g, &ctx)
         }
-    }
+    };
 
-    housekeeping(g, &ctx);
+    // sub_20D55 tail: housekeeping only when the maneuver stage didn't act
+    if !acted {
+        housekeeping(g, &ctx);
+    }
 }
 
 /// Lock/load housekeeping (`sub_1F09F` 59195): keep tubes loading with the

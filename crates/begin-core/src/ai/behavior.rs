@@ -9,24 +9,72 @@ use crate::object::*;
 use crate::orders::{self, Mounts};
 use crate::systems::helm::{apparent_dist, relative_bearing, target_bearing_mark};
 
+// AI-only tuning floats decoded from the asm (dseg twins of unrelated names).
+const AI_PHASER_SPREAD: f64 = 10.0; // flt_35FC9 dseg 101715
+const AI_FF_TOLERANCE: f64 = 5.0; // flt_35F6E dseg 101702 (twin of the destruct countdown)
+const AI_TEMP_LATCH_FACTOR: f64 = 0.9; // dbl_35F44 dseg 101696 (twin of AI_FANATIC_RAM)
+
+/// `sub_1D1F0` 55451: set course-mode helm; reports whether anything changed.
+pub(crate) fn set_course_helm(g: &mut Game, id: ObjId, course: f64, warp: f64) -> bool {
+    let course = norm360(course);
+    let o = g.obj_mut(id);
+    if o.helm == HelmMode::Course && o.desired_course == course && o.desired_warp == warp {
+        return false;
+    }
+    o.helm = HelmMode::Course;
+    o.desired_course = course;
+    o.desired_warp = warp;
+    true
+}
+
+/// `sub_1D258` 55574: set pursue-mode helm; reports whether anything changed.
+pub(crate) fn set_pursue_helm(g: &mut Game, id: ObjId, target: ObjId, warp: f64) -> bool {
+    let changed = {
+        let o = g.obj(id);
+        o.helm != HelmMode::Pursue
+            || o.pursue != Some(target)
+            || o.desired_warp != warp.clamp(MIN_WARP, 20.0)
+    };
+    orders::pursue(g, id, target, Some(warp), false);
+    changed
+}
+
 // ===== §12.3 reflexes (`sub_20C86` 62632) =====
 
 /// Returns true when a reflex acted (blocks the rest of the tree this cycle).
 pub fn reflexes(g: &mut Game, ctx: &Ctx) -> bool {
-    if overheat_slowdown(g, ctx) {
-        return true;
+    // docked ships skip everything except the shield re-raise
+    if !g.obj(ctx.id).ship.as_ref().unwrap().docked() {
+        if life_support_hold(g, ctx) {
+            return true;
+        }
+        if overheat_slowdown(g, ctx) {
+            return true;
+        }
+        if flee_detonation(g, ctx) {
+            return true;
+        }
+        if snap_phasers(g, ctx) {
+            return true;
+        }
+        if point_defense(g, ctx) {
+            return true;
+        }
+        if shield_drop_when_starved(g, ctx) {
+            return true;
+        }
     }
-    if flee_detonation(g, ctx) {
-        return true;
+    shield_reraise(g, ctx)
+}
+
+/// Head of `sub_20C86`: life support failing → hold course, warp 1 to save
+/// the crew. Acts (blocks the tree) only when that changed the helm.
+fn life_support_hold(g: &mut Game, ctx: &Ctx) -> bool {
+    if g.obj(ctx.id).ship.as_ref().unwrap().life_failures <= 0 {
+        return false;
     }
-    if snap_phasers(g, ctx) {
-        return true;
-    }
-    if point_defense(g, ctx) {
-        return true;
-    }
-    shield_reinforcement(g, ctx); // never blocks
-    false
+    let course = g.obj(ctx.id).desired_course;
+    set_course_helm(g, ctx.id, course, 1.0)
 }
 
 /// `sub_1E59D`: asymmetric drive damage + temperature > 38 → cool at warp 1.
@@ -156,8 +204,10 @@ fn snap_phasers(g: &mut Game, ctx: &Ctx) -> bool {
             if expected <= 0.0 {
                 return false;
             }
-            let n = (shield_eu / expected).ceil() as usize;
-            (n.clamp(1, ctx.charged_banks), spread)
+            // sub_1E78A: floor, then 1 when that rounds to zero (Xfloor)
+            let n = (shield_eu / expected).floor() as usize;
+            let n = if n == 0 { 1 } else { n.min(ctx.charged_banks) };
+            (n, spread)
         }
         _ => (1, SPREAD_DEFAULT),
     };
@@ -168,9 +218,10 @@ fn snap_phasers(g: &mut Game, ctx: &Ctx) -> bool {
 
 /// `sub_1E8B8`/`sub_20697`: phaser point defense against incoming probes.
 fn point_defense(g: &mut Game, ctx: &Ctx) -> bool {
-    // skipped when a ship target is in phaser range and phasers dominate
+    // skipped when a ship target is in phaser range and we have any phaser
+    // ratio at all (sub_1E8B8: dominance > 0, not >= 1)
     if let Some(t) = ctx.target.as_ref() {
-        if t.dist < ctx.bank_range && t.phaser_dominance >= 1.0 {
+        if t.dist < ctx.bank_range && t.phaser_dominance > 0.0 {
             return false;
         }
     }
@@ -222,11 +273,12 @@ fn point_defense(g: &mut Game, ctx: &Ctx) -> bool {
             false
         }
         Some(k) if dist >= ctx.bank_range => {
-            // let a chasing probe close: slow down two factors (min 1)
+            // let a chasing probe close: slow down two factors (min 1);
+            // sub_20697 returns 0 here so the rest of the tree still runs
             let o = g.obj_mut(ctx.id);
-            o.desired_warp = (o.warp - AI_PURSUE_WARP_BONUS).max(1.0);
+            o.desired_warp = (o.desired_warp - AI_PURSUE_WARP_BONUS).max(1.0);
             let _ = k;
-            true
+            false
         }
         Some(k) => {
             let b = &mut g.obj_mut(ctx.id).ship.as_mut().unwrap().banks[k];
@@ -237,30 +289,44 @@ fn point_defense(g: &mut Game, ctx: &Ctx) -> bool {
     }
 }
 
-/// `sub_1E9BB`/`sub_1EA71`: reinforce the weakest damaged shield when power
-/// allows; drop reinforcement when residual power runs short.
-fn shield_reinforcement(g: &mut Game, ctx: &Ctx) {
+/// `sub_1E9BB` 58292: power-starved → drop the weakest live shield to shed
+/// load. Blocks the tree when taken.
+fn shield_drop_when_starved(g: &mut Game, ctx: &Ctx) -> bool {
+    if !g.obj(ctx.id).ship.as_ref().unwrap().brain.shields_starved {
+        return false;
+    }
+    let weakest = {
+        let s = g.obj(ctx.id).ship.as_ref().unwrap();
+        s.shields
+            .iter()
+            .enumerate()
+            .filter(|(_, sh)| !sh.sys.destroyed() && sh.state != ShieldState::Down)
+            .min_by(|a, b| a.1.strength.partial_cmp(&b.1.strength).unwrap())
+            .map(|(k, _)| k)
+    };
+    let Some(k) = weakest else { return false };
+    g.obj_mut(ctx.id).ship.as_mut().unwrap().shields[k].state = ShieldState::Down;
+    true
+}
+
+/// `sub_1EA71` 58384: recovered (not starved, residual covers the shield
+/// budget) → re-raise ONE dropped shield. Blocks the tree when taken.
+fn shield_reraise(g: &mut Game, ctx: &Ctx) -> bool {
     let (starved, residual, shield_energy) = {
         let o = g.obj(ctx.id);
         let s = o.ship.as_ref().unwrap();
         (s.brain.shields_starved, o.residual, g.data.ships[s.design].shield_energy)
     };
-    if !starved && residual > shield_energy * SHIELD_REINFORCE_COST {
-        let weakest = {
-            let s = g.obj(ctx.id).ship.as_ref().unwrap();
-            s.shields
-                .iter()
-                .enumerate()
-                .filter(|(_, sh)| !sh.sys.destroyed() && sh.sys.dmg > 0)
-                .min_by(|a, b| a.1.strength.partial_cmp(&b.1.strength).unwrap())
-                .map(|(k, _)| k)
-        };
-        if let Some(k) = weakest {
-            orders::reinforce_shield(g, ctx.id, Some(k));
-        }
-    } else if residual < shield_energy {
-        orders::reinforce_shield(g, ctx.id, None); // drop reinforcement
+    if starved || residual < shield_energy {
+        return false;
     }
+    let dropped = {
+        let s = g.obj(ctx.id).ship.as_ref().unwrap();
+        s.shields.iter().position(|sh| sh.state == ShieldState::Down)
+    };
+    let Some(k) = dropped else { return false };
+    g.obj_mut(ctx.id).ship.as_mut().unwrap().shields[k].state = ShieldState::Up;
+    true
 }
 
 // ===== §12.5 fire control =====
@@ -286,8 +352,9 @@ pub fn weapons(g: &mut Game, ctx: &mut Ctx) -> bool {
 }
 
 /// Friendly-fire corridor (`sub_20398` 61531): an ally inside `range` whose
-/// bearing is within `tolerance` of the firing line blocks the shot.
-fn corridor_blocked(g: &Game, ctx: &Ctx, fire_bearing: f64, range: f64, tolerance: f64) -> bool {
+/// bearing is within `tolerance` of the firing line blocks the shot. A block
+/// raises the sidestep flag (word_38684) consumed by `torp_range_maneuver`.
+fn corridor_blocked(g: &mut Game, ctx: &Ctx, fire_bearing: f64, range: f64, tolerance: f64) -> bool {
     for a in g.ship_ids() {
         if a == ctx.id {
             continue;
@@ -299,6 +366,7 @@ fn corridor_blocked(g: &Game, ctx: &Ctx, fire_bearing: f64, range: f64, toleranc
         let (b, _) = target_bearing_mark(g, ctx.id, a, ctx.side);
         let d = apparent_dist(g, ctx.id, a, ctx.side);
         if d < range && ang_dist(b, fire_bearing) < tolerance {
+            g.obj_mut(ctx.id).ship.as_mut().unwrap().brain.weave_base = -1.0;
             return true;
         }
     }
@@ -328,24 +396,30 @@ fn fire_phasers_at_target(g: &mut Game, ctx: &Ctx) -> bool {
     if ctx.charged_banks == 0 {
         return false;
     }
-    if corridor_blocked(g, ctx, t.bearing, t.dist, BANK_BEARS_CONE) {
+    // sub_1EAEF: corridor is 5° at full bank range
+    let bearing = t.bearing;
+    if corridor_blocked(g, ctx, bearing, ctx.bank_range, AI_FF_TOLERANCE) {
         return false;
     }
+    // sub_1EAEF: aggressive → alpha strike (all banks, only once every
+    // operational bank is charged); timid → half the charged battery now
     let aggression = g.obj(ctx.id).ship.as_ref().unwrap().brain.aggression;
-    let n = if g.rng.unit() + AI_AGGR_FIRE_BIAS < aggression {
-        (ctx.charged_banks + 1) / 2
-    } else if ctx.charged_banks == ctx.op_banks {
-        ctx.charged_banks
+    let n = if g.rng.unit() + AI_AGGR_FIRE_BIAS <= aggression {
+        if ctx.charged_banks == ctx.op_banks {
+            ctx.charged_banks
+        } else {
+            return false; // wait for a full battery
+        }
     } else {
-        return false; // wait for a full battery
+        (ctx.charged_banks + 1) / 2
     };
-    orders::fire_n_charged_banks(g, ctx.id, n, SPREAD_DEFAULT) > 0
+    orders::fire_n_charged_banks(g, ctx.id, n, AI_PHASER_SPREAD) > 0
 }
 
 /// `sub_1EC17` 58601 + volley sizing `sub_2047A` 61646.
 fn fire_torpedoes_at_target(g: &mut Game, ctx: &mut Ctx) -> bool {
     let Some(t) = ctx.target.as_ref() else { return false };
-    if ctx.loaded_tubes == 0 || g.get(t.id).is_none() || g.obj(t.id).is_hulk() {
+    if ctx.op_tubes == 0 || g.get(t.id).is_none() || g.obj(t.id).is_hulk() {
         return false;
     }
     if t.dist < t.torp_min_range || t.dist > t.torp_max_range {
@@ -373,44 +447,40 @@ fn fire_torpedoes_at_target(g: &mut Game, ctx: &mut Ctx) -> bool {
         }
         return true;
     }
-    // fire only when the solution bears: tolerance = (offset + 12)/2 degrees
+    if ctx.loaded_tubes == 0 {
+        return false;
+    }
+    // friendly corridor: the tubes are turreted, so the (lead+12)/2 tolerance
+    // is ONLY the corridor half-angle around the firing bearing (sub_1EC17)
     let tolerance = (lead + 12.0) / 2.0;
-    let solution_off = {
-        // relative mark of the firing solution vs our bow
-        let rel = relative_bearing(g, ctx.id, t.id, ctx.side);
-        let off = if rel > 180.0 { 360.0 - rel } else { rel };
-        off
-    };
-    if solution_off > tolerance {
-        return false;
-    }
-    // friendly corridor
     let corridor_range = if td.homing { t.dist * AI_HOMING_CORRIDOR } else { t.torp_max_range };
-    if corridor_blocked(g, ctx, t.bearing, corridor_range, tolerance) {
-        // remembered by maneuver: sidestep ±90 (`word_38684`)
-        g.obj_mut(ctx.id).ship.as_mut().unwrap().brain.weave_base = -1.0; // flag via weave_base<0
+    let bearing = t.bearing;
+    if corridor_blocked(g, ctx, bearing, corridor_range, tolerance) {
         return false;
     }
-    // volley size (`sub_2047A`)
-    let loaded = ctx.loaded_tubes;
+    // volley size from OPERATIONAL tubes (`sub_2047A`)
     let volley = {
         if g.rng.percent(10.0) {
             0
-        } else if loaded == 1 || td.homing {
+        } else if ctx.op_tubes == 1 || td.homing {
             1
-        } else if t.max_warp < 2.0 || t.pressure < 30 {
-            loaded
+        } else if t.max_warp < 2.0 || t.pressure < 30 || t.pressure > 80 {
+            ctx.op_tubes
         } else if t.pressure > 60 {
             if g.rng.percent(35.0) {
-                1
-            } else {
                 0
+            } else {
+                1 // 65%: single harassing shot
             }
+        } else if g.rng.percent(10.0) {
+            0
         } else {
-            loaded / 2
+            ctx.op_tubes / 2
         }
     };
-    if volley == 0 {
+    // sub_2047A tail: hold fire until the full volley is loaded so the salvo
+    // launches synchronized and merges
+    if volley == 0 || volley > ctx.loaded_tubes {
         return false;
     }
     // fire the first `volley` loaded tubes
@@ -446,14 +516,6 @@ fn launch_probes(g: &mut Game, ctx: &Ctx) -> bool {
     if t.dist > max_range {
         return false;
     }
-    // load all launchers first (prox 1000 retreating / 100 otherwise)
-    if ctx.loaded_launchers < ctx.op_launchers {
-        let prox = if retreating { 1000.0 } else { 100.0 };
-        return orders::load_launchers(g, ctx.id, &Mounts::All, prox, 0.0) > 0;
-    }
-    if ctx.loaded_launchers == 0 {
-        return false;
-    }
     let probes_chasing = g
         .probe_ids()
         .into_iter()
@@ -480,6 +542,12 @@ fn launch_probes(g: &mut Game, ctx: &Ctx) -> bool {
     };
     if !launch {
         return false;
+    }
+    // loader gated behind the launch decision (`sub_1ED89`): load all
+    // launchers first (prox 1000 retreating / 100 otherwise), fire once full
+    if ctx.loaded_launchers < ctx.op_launchers {
+        let prox = if retreating { 1000.0 } else { 100.0 };
+        return orders::load_launchers(g, ctx.id, &Mounts::All, prox, 0.0) > 0;
     }
     orders::fire_probes(g, ctx.id, &Mounts::All, Some(t.id), None) > 0
 }
@@ -540,36 +608,47 @@ pub fn combat_speed(g: &mut Game, ctx: &Ctx) -> f64 {
         (g.data.ships[s.design].warp_efficiency,)
     };
     let mut w = ctx.max_warp * (100 - max_dmg) as f64 / 100.0 * warp_eff;
-    // temperature panic hysteresis (enter 0.85, exit 0.4)
+    // temperature panic hysteresis (sub_1DE53: enter >0.85 at ×0.5; while
+    // latched, recover at ×0.9 until norm-temp drops below 0.4)
     let norm = (max_temp - AI_TEMP_NORM_BASE) / AI_TEMP_NORM_RANGE;
-    let panicked = if latch { norm > AI_TEMP_PANIC_EXIT } else { norm > AI_TEMP_PANIC_ENTER };
-    {
-        let b = &mut g.obj_mut(ctx.id).ship.as_mut().unwrap().brain;
-        b.overheat_latch = panicked;
-    }
-    if panicked {
+    if norm > AI_TEMP_PANIC_ENTER {
+        g.obj_mut(ctx.id).ship.as_mut().unwrap().brain.overheat_latch = true;
         w *= 0.5;
+    } else if latch {
+        if norm < AI_TEMP_PANIC_EXIT {
+            g.obj_mut(ctx.id).ship.as_mut().unwrap().brain.overheat_latch = false;
+        } else {
+            w *= AI_TEMP_LATCH_FACTOR;
+        }
     }
     w.max(1.0)
 }
 
 /// Weave executor (`sub_2029B` 61410): course = base ± amplitude, cadence
-/// every 2 cycles; warp from combat_speed reduced when the turn is sharp.
-pub fn weave_to(g: &mut Game, ctx: &Ctx, mode: u8) {
+/// every 2 cycles (counter bumped in `Ctx::build`); warp from combat_speed
+/// reduced when the turn is sharp. Returns whether the helm changed.
+pub fn weave_to(g: &mut Game, ctx: &Ctx, mode: u8) -> bool {
+    let Some(t) = ctx.target.as_ref() else { return false };
+    weave_exec(g, ctx, mode, t.bearing)
+}
+
+/// The executor proper; `bearing` is the raw base (mode 2 flips it 180°,
+/// `sub_2051F`).
+fn weave_exec(g: &mut Game, ctx: &Ctx, mode: u8, bearing: f64) -> bool {
+    let Some(t) = ctx.target.as_ref() else { return false };
     // steering cadence (brain+1Ch)
     {
         let b = &mut g.obj_mut(ctx.id).ship.as_mut().unwrap().brain;
-        b.steering_cooldown += 1;
         if b.steering_cooldown < 2 {
-            return;
+            return false;
         }
         b.steering_cooldown = 0;
         b.weave_mode = mode;
     }
-    let Some(t) = ctx.target.as_ref() else { return };
-    let base = if mode == 2 { norm360(t.bearing + 180.0) } else { t.bearing };
-    // amplitude grows with threat proximity, shrinks with aggression
-    let closest_threat = ctx.nearest_incoming.map(|(_, d)| d).unwrap_or(f64::MAX).min(t.dist);
+    let base = if mode == 2 { norm360(bearing + 180.0) } else { norm360(bearing) };
+    // amplitude gated ONLY on the nearest incoming attacker (`sub_2051F`):
+    // approach dead straight when nothing is boring in under 25000
+    let closest_threat = ctx.nearest_incoming.map(|(_, d)| d).unwrap_or(f64::MAX);
     let (aggression, side_flip) = {
         let b = &mut g.obj_mut(ctx.id).ship.as_mut().unwrap().brain;
         b.weave_side = -b.weave_side;
@@ -595,55 +674,58 @@ pub fn weave_to(g: &mut Game, ctx: &Ctx, mode: u8) {
         warp = (w1turn * 2.0 / turn_needed).clamp(1.0, warp);
     }
     // 3D: chase the target's elevation (toward) or invert it (away)
-    let mark = if mode == 2 { -t.mark } else { t.mark };
+    let mark = (if mode == 2 { -t.mark } else { t.mark }).clamp(-90.0, 90.0);
     {
         let o = g.obj_mut(ctx.id);
+        let changed = o.helm != HelmMode::Course
+            || o.desired_course != course
+            || o.desired_mark != mark
+            || o.desired_warp != warp;
         o.helm = HelmMode::Course;
         o.desired_course = course;
-        o.desired_mark = mark.clamp(-90.0, 90.0);
+        o.desired_mark = mark;
         o.desired_warp = warp;
         let b = &mut o.ship.as_mut().unwrap().brain;
         b.weave_base = base;
         b.weave_amp = amp;
+        changed
     }
 }
 
 /// Random jink (`sub_2034B` 61490).
-fn jink(g: &mut Game, ctx: &Ctx) {
+fn jink(g: &mut Game, ctx: &Ctx) -> bool {
     let course = g.rng.range(0.0, 360.0);
     let warp = combat_speed(g, ctx);
-    let o = g.obj_mut(ctx.id);
-    o.helm = HelmMode::Course;
-    o.desired_course = norm360(course);
-    o.desired_warp = warp;
+    set_course_helm(g, ctx.id, course, warp)
 }
 
-/// Wander when no target (`sub_1F200` 59343): player-side allies hold,
-/// enemies mill about at cruise speed.
-fn wander(g: &mut Game, ctx: &Ctx) {
+/// Wander when no target (`sub_1F200` 59343): player-side allies hold; the
+/// rest keep course at cruise speed, turning ±90° on 5% of cycles.
+fn wander(g: &mut Game, ctx: &Ctx) -> bool {
     let has_local_friend = g.ship_ids().into_iter().any(|s| {
         g.obj(s).nation == ctx.side && matches!(g.obj(s).control, Control::Local | Control::Remote(_))
     });
     if has_local_friend {
         // allies of a human hold position
-        let o = g.obj_mut(ctx.id);
-        o.desired_warp = 0.0;
-        return;
+        return set_course_helm(g, ctx.id, 0.0, 0.0);
     }
-    if g.rng.percent(5.0) {
-        return; // keep course
-    }
-    let turn = if g.rng.unit() < 0.5 { -AI_SIDESTEP } else { AI_SIDESTEP };
+    let turn = if g.rng.percent(5.0) {
+        if g.rng.unit() < 0.5 {
+            -AI_SIDESTEP
+        } else {
+            AI_SIDESTEP
+        }
+    } else {
+        0.0 // 95%: hold course
+    };
     let warp = combat_speed(g, ctx);
-    let o = g.obj_mut(ctx.id);
-    o.helm = HelmMode::Course;
-    o.desired_course = norm360(o.course + turn);
-    o.desired_warp = warp;
+    let course = g.obj(ctx.id).desired_course + turn;
+    set_course_helm(g, ctx.id, course, warp)
 }
 
 /// Phaser-range maneuver (`sub_20120` 61222).
-pub fn phaser_range_maneuver(g: &mut Game, ctx: &Ctx) {
-    let Some(t) = ctx.target.as_ref() else { return };
+pub fn phaser_range_maneuver(g: &mut Game, ctx: &Ctx) -> bool {
+    let Some(t) = ctx.target.as_ref() else { return false };
     if t.dist < ctx.bank_range {
         // inside the envelope: jink if our facing shield is nearly gone
         let face = relative_bearing(g, ctx.id, t.id, ctx.side);
@@ -655,122 +737,115 @@ pub fn phaser_range_maneuver(g: &mut Game, ctx: &Ctx) {
             }
         };
         if weak {
-            jink(g, ctx);
+            jink(g, ctx)
         } else {
-            let warp = (t.max_warp + 1.0).max(1.0);
-            let tid = t.id;
-            orders::pursue(g, ctx.id, tid, Some(warp), false);
+            // sub_20120: target's CURRENT warp + 1
+            let warp = g.obj(t.id).warp + 1.0;
+            set_pursue_helm(g, ctx.id, t.id, warp)
         }
     } else if t.dist > ctx.bank_range * 2.0 {
-        weave_to(g, ctx, 1);
+        weave_to(g, ctx, 1)
     } else {
+        // sub_20120: target's CURRENT warp + aggression × 4
         let aggression = g.obj(ctx.id).ship.as_ref().unwrap().brain.aggression;
-        let warp = t.max_warp + aggression * AI_APPROACH_WARP_AGGR;
-        let tid = t.id;
-        orders::pursue(g, ctx.id, tid, Some(warp.max(1.0)), false);
+        let warp = g.obj(t.id).warp + aggression * AI_APPROACH_WARP_AGGR;
+        set_pursue_helm(g, ctx.id, t.id, warp)
     }
 }
 
 /// Torpedo-range maneuver (`sub_201C7` 61310).
-pub fn torp_range_maneuver(g: &mut Game, ctx: &Ctx) {
-    let Some(t) = ctx.target.as_ref() else { return };
-    // friendly blocked the corridor last shot → sidestep ±90
+pub fn torp_range_maneuver(g: &mut Game, ctx: &Ctx) -> bool {
+    let Some(t) = ctx.target.as_ref() else { return false };
+    // friendly blocked the corridor last shot (word_38684) → sidestep ±90,
+    // primed through the weave executor
     let blocked = {
         let b = &mut g.obj_mut(ctx.id).ship.as_mut().unwrap().brain;
         let was = b.weave_base < 0.0;
         if was {
             b.weave_base = 0.0;
+            b.steering_cooldown = 2; // sub_201C7 primes the cadence
         }
         was
     };
     if blocked {
-        let side = if g.rng.unit() < 0.5 { -AI_SIDESTEP } else { AI_SIDESTEP };
-        let warp = combat_speed(g, ctx);
-        let bearing = t.bearing;
-        let o = g.obj_mut(ctx.id);
-        o.helm = HelmMode::Course;
-        o.desired_course = norm360(bearing + side);
-        o.desired_warp = warp;
-        return;
+        let side = if g.rng.unit() > 0.5 { AI_SIDESTEP } else { -AI_SIDESTEP };
+        let bearing = t.bearing + side;
+        return weave_exec(g, ctx, 1, bearing);
     }
     let aggression = g.obj(ctx.id).ship.as_ref().unwrap().brain.aggression;
     let standoff = t.torp_min_range + (1.0 - aggression) * (t.torp_max_range - t.torp_min_range);
     if t.dist < standoff {
-        weave_to(g, ctx, 2); // extend
+        weave_to(g, ctx, 2) // extend
     } else {
-        weave_to(g, ctx, 1); // approach
+        weave_to(g, ctx, 1) // approach
     }
 }
 
 /// Default combat maneuver (`sub_2001A` 61052).
-pub fn default_maneuver(g: &mut Game, ctx: &Ctx) {
+pub fn default_maneuver(g: &mut Game, ctx: &Ctx) -> bool {
     if !ctx.can_move {
-        return;
+        return false;
     }
     if g.obj(ctx.id).ship.as_ref().unwrap().docked() {
-        g.obj_mut(ctx.id).desired_warp = 0.0;
-        return;
+        return set_course_helm(g, ctx.id, 0.0, 0.0);
     }
     let Some(t) = ctx.target.as_ref() else {
-        wander(g, ctx);
-        return;
+        return wander(g, ctx);
     };
     let my_probes_chasing = g
         .probe_ids()
         .into_iter()
         .any(|p| g.obj(p).owner == Some(ctx.id) && g.obj(p).pursue == Some(t.id));
     if my_probes_chasing {
-        weave_to(g, ctx, 2); // stand off, the probes are working
-        return;
+        return weave_to(g, ctx, 2); // stand off, the probes are working
     }
-    let phasers_dominate = ctx.op_banks > 0 && t.phaser_dominance >= 1.0;
-    let torps_dominate = ctx.op_tubes > 0 && t.torp_dominance >= 1.0;
-    if boarding_favorable(g, ctx) || phasers_dominate {
-        phaser_range_maneuver(g, ctx);
-    } else if torps_dominate {
-        torp_range_maneuver(g, ctx);
-    } else if ctx.op_tubes > 0 {
-        // weapons exist but are outmatched — fight at torpedo standoff anyway
-        torp_range_maneuver(g, ctx);
-    } else if ctx.op_banks > 0 {
-        phaser_range_maneuver(g, ctx);
+    // sub_2001A loc_2009C: phasers dominate iff p>0 && p>t; torpedoes iff
+    // t>0 && t>=p (ties → torpedo standoff); neither → full stop
+    let p = t.phaser_dominance;
+    let td = t.torp_dominance;
+    if boarding_favorable(g, ctx) || (p > 0.0 && p > td) {
+        phaser_range_maneuver(g, ctx)
+    } else if td > 0.0 && td >= p {
+        torp_range_maneuver(g, ctx)
     } else {
-        g.obj_mut(ctx.id).desired_warp = 0.0; // helpless: full stop
+        set_course_helm(g, ctx.id, 0.0, 0.0) // helpless: full stop
     }
 }
 
-/// Stance helm (`sub_1EF17` 58970).
-pub fn stance_helm(g: &mut Game, ctx: &Ctx) {
+/// `sub_1DB12` 56572: recovered from retreat? No target counts as recovered;
+/// no weapons at all means never recovered.
+fn retreat_recovered(g: &Game, ctx: &Ctx) -> bool {
+    if ctx.target.is_none() {
+        return true;
+    }
+    if ctx.op_tubes == 0 && ctx.op_banks == 0 {
+        return false;
+    }
+    let (ratio, bravery) = damage_ratio(g, ctx.id);
+    ratio < bravery * AI_RETREAT_RECOVER
+}
+
+/// Stance helm (`sub_1EF17` 58970). Returns whether the helm changed.
+pub fn stance_helm(g: &mut Game, ctx: &Ctx) -> bool {
     let stance = g.obj(ctx.id).ship.as_ref().unwrap().brain.stance;
     match stance {
         Stance::DestructRam => {
             if let Some(t) = ctx.target.as_ref() {
-                let warp = ctx.max_warp.max(1.0);
-                let tid = t.id;
-                orders::pursue(g, ctx.id, tid, Some(warp), false);
+                set_pursue_helm(g, ctx.id, t.id, ctx.max_warp)
             } else {
-                g.obj_mut(ctx.id).desired_warp = 0.0;
+                set_course_helm(g, ctx.id, 0.0, 0.0)
             }
         }
         Stance::Retreat => {
-            // recovered? (damage ratio < bravery × 0.5 — `sub_1DB12`)
-            let (ratio, bravery) = damage_ratio(g, ctx.id);
-            if ratio < bravery * AI_RETREAT_RECOVER {
-                let b = &mut g.obj_mut(ctx.id).ship.as_mut().unwrap().brain;
-                b.stance = Stance::Normal;
-                b.retreat_announced = false;
-                return;
+            if retreat_recovered(g, ctx) {
+                g.obj_mut(ctx.id).ship.as_mut().unwrap().brain.stance = Stance::Normal;
+                return false;
             }
-            if let Some(t) = ctx.target.as_ref() {
-                let away = norm360(t.bearing + 180.0);
-                let warp = combat_speed(g, ctx);
-                let o = g.obj_mut(ctx.id);
-                o.helm = HelmMode::Course;
-                o.desired_course = away;
-                o.desired_warp = warp;
-            }
+            // sub_1EF17: retreat runs through the weave executor (mode 2,
+            // jinking away), not a straight line
+            weave_to(g, ctx, 2)
         }
-        Stance::Normal => {}
+        Stance::Normal => false,
     }
 }
 
@@ -795,25 +870,30 @@ fn damage_ratio(g: &Game, id: ObjId) -> (f64, f64) {
     (ratio, s.brain.bravery)
 }
 
-/// `sub_1EFC8` 59066: retreat and last-stand checks.
+/// `sub_1EFC8` 59066: retreat and last-stand checks. Retreat is evaluated
+/// FIRST; last-stand only when not retreating.
 pub fn morale(g: &mut Game, ctx: &Ctx) {
+    if retreat_check(g, ctx) {
+        return;
+    }
     last_stand(g, ctx);
-    retreat_check(g, ctx);
 }
 
-/// `sub_1DB78` 56631.
-fn retreat_check(g: &mut Game, ctx: &Ctx) {
-    let Some(t) = ctx.target.as_ref() else { return };
+/// `sub_1DB78` 56631. Returns whether retreat was triggered.
+fn retreat_check(g: &mut Game, ctx: &Ctx) -> bool {
+    let Some(t) = ctx.target.as_ref() else { return false };
     let docked = g.obj(ctx.id).ship.as_ref().unwrap().docked();
     if docked || !ctx.can_move {
-        return;
+        return false;
     }
     let (ratio, bravery) = damage_ratio(g, ctx.id);
     if t.dist > (AI_RETREAT_RANGE_BASE - bravery) * AI_RETREAT_RANGE_SCALE {
-        return;
+        return false;
     }
-    if ratio <= bravery * AI_RETREAT_DAMAGE {
-        return;
+    // sub_1DB78: no working banks AND no tubes → retreat unconditionally
+    let weaponless = ctx.op_tubes == 0 && ctx.op_banks == 0;
+    if !weaponless && ratio <= bravery * AI_RETREAT_DAMAGE {
+        return false;
     }
     let already = g.obj(ctx.id).ship.as_ref().unwrap().brain.stance == Stance::Retreat;
     {
@@ -846,6 +926,7 @@ fn retreat_check(g: &mut Game, ctx: &Ctx) {
         g.obj_mut(ctx.id).ship.as_mut().unwrap().brain.retreat_announced = true;
         g.say(Some(ctx.side), &captain, line, ReportKind::Ally);
     }
+    true
 }
 
 /// `sub_1DA17` 56460: set the self-destruct and ram.
@@ -893,27 +974,21 @@ fn last_stand(g: &mut Game, ctx: &Ctx) {
     }
 }
 
-/// `sub_20BF2` 62550: Romulans cloak when idle.
+/// `sub_20BF2` 62550: cloak only when there is NO target at all (and not
+/// docked, cloak undamaged, not already cloaked). No auto-decloak here.
 pub fn cloak_when_idle(g: &mut Game, ctx: &Ctx) -> bool {
-    let (capable, cloaked, starved) = {
-        let s = g.obj(ctx.id).ship.as_ref().unwrap();
-        (s.cloak_capable && !s.cloak.destroyed(), s.cloaked, s.brain.shields_starved)
-    };
-    if !capable || starved {
+    if ctx.target.is_some() {
         return false;
     }
-    let idle = match ctx.target.as_ref() {
-        None => true,
-        Some(t) => t.dist > ctx.bank_range.max(t.torp_max_range) * 1.5,
+    let (capable, cloaked, docked) = {
+        let s = g.obj(ctx.id).ship.as_ref().unwrap();
+        (s.cloak_capable && !s.cloak.destroyed(), s.cloaked, s.docked())
     };
-    if idle && !cloaked {
-        let _ = orders::set_cloak(g, ctx.id, true);
-        return true;
+    if !capable || docked || cloaked {
+        return false;
     }
-    if !idle && cloaked {
-        let _ = orders::set_cloak(g, ctx.id, false);
-    }
-    false
+    let _ = orders::set_cloak(g, ctx.id, true);
+    true
 }
 
 /// `sub_20AF8` 62435: remote-detonate a probe the target is outrunning.
