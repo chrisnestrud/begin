@@ -592,7 +592,8 @@ impl<'a> Parser<'a> {
     }
 
     fn cmd_lock(&mut self) -> R {
-        if self.peek() == Some("all") {
+        let all = self.peek() == Some("all");
+        if all {
             self.i += 1;
         }
         match self.noun(&[BANKS, TUBES, RAILS, PROBES]) {
@@ -637,6 +638,25 @@ impl<'a> Parser<'a> {
                 Ok(Outcome::Advance)
             }
             Some("probes") => {
+                // 1.65 has "lock all probes on <ship>" (control core 0x5199)
+                if all {
+                    let ship = self.ship()?;
+                    let mine: Vec<_> = self
+                        .g
+                        .probe_ids()
+                        .into_iter()
+                        .filter(|&p| self.g.obj(p).owner == Some(self.me))
+                        .collect();
+                    if mine.is_empty() {
+                        return Err("No probes in flight.".into());
+                    }
+                    let n = mine.len();
+                    for p in mine {
+                        begin_core::systems::probes::lock_probe(self.g, p, ship);
+                    }
+                    self.officer(format!("{n} probe(s) locked."));
+                    return Ok(Outcome::Advance);
+                }
                 let code = self.next().ok_or("Which probe (control code)?")?.to_string();
                 let probe = begin_core::systems::probes::probe_by_code(self.g, self.me, &code)
                     .ok_or("No such probe.")?;
@@ -650,7 +670,8 @@ impl<'a> Parser<'a> {
     }
 
     fn cmd_turn(&mut self) -> R {
-        if self.peek() == Some("all") {
+        let all = self.peek() == Some("all");
+        if all {
             self.i += 1;
         }
         match self.noun(&[BANKS, TUBES, PROBES]) {
@@ -668,6 +689,23 @@ impl<'a> Parser<'a> {
                 Ok(Outcome::Advance)
             }
             Some("probes") => {
+                // 1.65 also has "turn all probes <course>"
+                if all {
+                    let (c, m) = self.course_mark().ok_or("Course?")?;
+                    let mine: Vec<_> = self
+                        .g
+                        .probe_ids()
+                        .into_iter()
+                        .filter(|&p| self.g.obj(p).owner == Some(self.me))
+                        .collect();
+                    if mine.is_empty() {
+                        return Err("No probes in flight.".into());
+                    }
+                    for p in mine {
+                        begin_core::systems::probes::turn_probe(self.g, p, c, m.unwrap_or(0.0));
+                    }
+                    return Ok(Outcome::Advance);
+                }
                 let code = self.next().ok_or("Which probe (control code)?")?.to_string();
                 let probe = begin_core::systems::probes::probe_by_code(self.g, self.me, &code)
                     .ok_or("No such probe.")?;
