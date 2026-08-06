@@ -302,14 +302,18 @@ undamaged, non-firing bank: `charge += min(needed, banks_charge/banks_rate
 `sub_B092`; manual turn: `sub_AF38` (16314). Resolution (`phaserDamage`
 23256), per firing bank: bank facing = `normalize(ship.course + bank.mark)`
 (mark auto-tracks lock target — `sub_B875` 16xxx sets mark from lock);
-for **every object**: skip self & cloaked; in range `dist < banks_range`
+for **every object**: skip self & **docked ships** (body+66Ch set; cloak is
+NEVER checked — cloaked ships are fully hittable and the hit bumps the
+reveal counter; verified 23326–23337); in range `dist < banks_range`
 and in cone `angular_diff(bearing→obj, facing) ≤ spread/2`:
 `damage = bank.charge × (45.0/spread) × sqrt(1 − dist/range) × 0.5`
 (`phaserDamMult` 99290, `flt_32CBE` 99196) applied via
 dealDamageToHull(obj, face, damage, type=4). Bank charge zeroed after fire.
-Spread player-selectable 10–45°; AI uses 45 default, or `angle_off × 2`
-when sniping (§12.5). Point defense burns down **decaying** torpedoes
-(§10.3).
+Arming (`sub_AD74` 16090) requires exactly full design charge and 0%
+damage, and always stores the parsed spread. Spread player-selectable
+10–45°; the AI volleys at **10.0** (`flt_35FC9` 101715), or `angle_off ×
+2` when sniping (§12.5). Point defense kills **any** torpedo or probe in
+the cone (§9 torp/probe targets, §10.3).
 
 **7.2 Torpedoes.** Load (`sub_BD34` 18331 → `sub_B4BA`): allocates
 TORPSTATE from tube's torp design: damage, prox (player/AI-set, ≤ design
@@ -376,11 +380,19 @@ Ships:
    first). Shield strength loss = `1 + absorbed × (1 − shield_absorption ×
    0.25)`, halved if reinforced; effective clamped to strength. SHIELD_BORE
    stops here (never penetrates). Others: `damage −= absorbed`; if ≤ 0 done.
-4. Hull: armour absorbs first (body+5E8h). If remaining damage ≥ hull
-   integrity (node+0C6h) → **ship destroyed** (`6Ch=3`). Else crew
-   casualties = `rand(0,dmg) + rand(0,dmg)`; survivors < 6 → all hands lost
-   (`sub_F64C`). Boarders take `rand(0,dmg)`. Docked ships recursively take
-   the same hit if dmg ≥ 10.
+4. Hull: armour (body+5E8h) is a **gate, not a subtractor** (asm
+   25399–25411): `armour −= dmg`; while armour stays > 0 the entire hit is
+   eaten; once it breaks, armour is zeroed and the **undiminished** damage
+   proceeds. If damage ≥ hull integrity (node+0C6h) → **ship destroyed**
+   (`6Ch=3`). Else crew casualties = `rand(0,dmg) + rand(0,dmg)`;
+   survivors < 6 → all hands lost (`sub_F64C`). Boarders take
+   `rand(0,dmg)`. Docked ships recursively take the same hit if dmg ≥ 10.
+   *(begin **1.65** difference, ported as the default `DamageModel::V165`:
+   shields absorb at FULL capacity — no ×0.25 anywhere — there is no
+   armour pool, any post-shield hit ≥ 50 destroys the ship outright
+   (begin.exe file 0xF1A3), crew loss is percentage-based
+   `floor(rand(0,dmg)/100 × crew) + rand(0,dmg/3)`, and there is no 8000
+   cap.)*
 5. System damage: `n = dmg/10` rolls; each roll hits each class with
    independent chance — shields 75%, tubes 50%, banks 45%, drives 40%,
    reactors 60% (25% of those destroy the reactor outright, else double
@@ -390,9 +402,13 @@ Ships:
    Damaged banks/tubes lose charge & locks; a loaded torpedo in a damaged
    tube is destroyed.
 
-Torpedoes (type-2 targets): only **decay-type** torps (plasma) are
-damageable — remaining-strength field −= damage; ≤0 → fizzle. Probes:
-similar (tail of `dealDamageToHull` 25990+, `loc_FFBD`).
+Torpedoes (type-2 targets): **any** hit detonates a non-decay torpedo in
+place (`6Ch=2`; full warhead × salvo if armed, dud if not — asm
+25965–25989). Decay-type (plasma) instead bleeds `fuse8 −= damage` and
+detonates at ≤ 0 (the proportional yield then fizzles it). Probes: one
+hit of any size sets `6Ch=2` (loc_FFBD 25993) and a probe with `6Ch==2`
+detonates at **full warhead with the arm timer bypassed** (`splashDamage`
+22645–22647).
 
 ### 10. Splash / detonation (`splashDamage` 22271, `splash_starter` 21127)
 
@@ -406,7 +422,9 @@ similar (tail of `dealDamageToHull` 25990+, `loc_FFBD`).
    `remaining/max_time_fuse`. **probe** = warhead damage (armed or
    remote-detonated).
 3. Blast: `total = yield × SplashDamMult (5.0)`; radius = `total × 10.0`
-   (`flt_32EEA`); for every non-cloaked object within radius:
+   (`flt_32EEA`); for every object within radius — skipping only the
+   firer, dying objects, and **docked** ships (body+66Ch; cloak is never
+   consulted — asm 22615–22626):
    `dmg = total × sqrt(1 − dist/radius)`, face = bearing-from-target,
    applied `salvo_count` times, type = warhead.
 4. Ship self-destruct: `Destruct` sets countdown (body+5EEh) = 5 cycles
