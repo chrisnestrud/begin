@@ -137,30 +137,21 @@ def decode_ship(b):
 ships = [decode_ship(b) for b in bases]
 
 # ---------- nations ----------
-# struct: {name, adjective, command} ptrs, 6 doubles (aggression, bravery,
-# loyalty, fanaticism, boarding_level, deviation), 2 null ptrs, intro ptr,
-# 7 rating-message ptrs. The 6 bridge-officer names sit just BEFORE each
-# nation struct (verified: Spock/Sulu/... before Federation, Martok/Kurn/
-# Worf/... before Klingon).
-# The Orion struct is truncated in the binary (the torpedo design array
-# begins right after it) and carries no endgame messages; supply
-# pirate-flavored stand-ins so every nation has a full table.
-ORION_FALLBACK = {
-    'endgame_intro': 'The Orion Pirate Guild has tallied the take. ',
-    'endgame': [
-        "Legendary!  Every cutthroat in the quadrant knows your name.",
-        "A fine haul.  The Guild drinks to you tonight.",
-        "Profitable enough.  You keep your ship.",
-        "You broke even.  Barely.",
-        "That cargo won't pay for the repairs.",
-        "The Guild is repossessing your ship.",
-        "Pathetic.  Even the Ferengi are laughing.",
-    ],
-}
-
+# struct (matches the NATION initializer in stats165.h/stats200.h): {name,
+# adjective, command} ptrs, 6 doubles (aggression, bravery, loyalty,
+# fanaticism, boarding_level, deviation), then a pointer to the 6-entry
+# crew-name pointer array (+0x3C) and a pointer to the 8-entry endgame
+# message pointer array (+0x40): msgs[0] is the intro ("After careful
+# consideration of the results of this simulation,"), msgs[1..7] the
+# rating tiers, best to worst. Every nation, Orion included, has a full
+# table — the earlier "truncated Orion" reading came from missing this
+# second indirection and grabbing the NEXT nation's strings inline.
 nation_ptrs = sorted(set(s['_nation_ptr'] for s in ships))
 nations = []
 for b in nation_ptrs:
+    crew_arr = farptr(b + 0x3C)
+    msgs_arr = farptr(b + 0x40)
+    msgs = [cstr(farptr(msgs_arr + 4 * k)) for k in range(8)]
     nations.append({
         'name': cstr(farptr(b)),
         'adjective': cstr(farptr(b + 4)),
@@ -171,13 +162,11 @@ for b in nation_ptrs:
         'fanaticism': rd(b + 0x24),
         'boarding_level': rd(b + 0x2C),
         'deviation': rd(b + 0x34),
-        'endgame_intro': cstr(farptr(b + 0x44)),
-        'endgame': [cstr(farptr(b + 0x48 + 4 * k)) for k in range(7)],
-        'officers': [cstr(farptr(b - 0x18 + 4 * k)) for k in range(6)],
+        'endgame_intro': msgs[0],
+        'endgame': msgs[1:8],
+        'officers': [cstr(farptr(crew_arr + 4 * k)) for k in range(6)],
     })
-    if not nations[-1]['endgame_intro'] or not all(nations[-1]['endgame']):
-        nations[-1]['endgame_intro'] = ORION_FALLBACK['endgame_intro']
-        nations[-1]['endgame'] = ORION_FALLBACK['endgame']
+    assert all(nations[-1]['endgame']) and nations[-1]['endgame_intro']
 for s in ships:
     s['nation'] = nations[nation_ptrs.index(s['_nation_ptr'])]['adjective']
     del s['_nation_ptr']
