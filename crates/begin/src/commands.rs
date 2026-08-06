@@ -1078,7 +1078,12 @@ impl<'a> Parser<'a> {
             })
             .collect();
         lines.push(format!("WARP TEMP:  {}   LIMIT: 40m", temps.join(" ")));
-        lines.push(format!("WARP POWER:     {:>6.0}", o.warp_budget.max(0.0)));
+        // 1.65 status shows GROSS drive output (constant while drives are
+        // healthy), not the post-cost leftover
+        lines.push(format!(
+            "WARP POWER:     {:>6.0}",
+            begin_core::systems::power::gross_warp_power(self.g, id)
+        ));
         lines.push(format!("OTHER POWER:    {:>6.0}", begin_core::systems::power::gross_pool(self.g, id)));
         lines.push(format!(
             "RESIDUAL POWER: {:>+6.0}",
@@ -1352,6 +1357,28 @@ impl<'a> Parser<'a> {
                     format!(
                         "REACTORS: {}x{}  BATTERIES: {}x{}  DRIVES: {}x{}",
                         d.reactors, d.reactor_output, d.batteries, d.battery_capacity, d.drives, d.warp_power
+                    ),
+                    // 1.65 library prints derived speeds (print site linear
+                    // 0x6030): max = budget-limited warp, cruise = eff x max
+                    format!(
+                        "MAX WARP: {:.1}   CRUISE: {:.1}   TURN: {:.0}deg/cycle at warp 1",
+                        {
+                            let w = if d.warp_power_use > 0.0 {
+                                (d.drives as f64 * d.warp_power / d.warp_power_use).min(d.max_warp)
+                            } else {
+                                d.max_warp
+                            };
+                            w
+                        },
+                        {
+                            let w = if d.warp_power_use > 0.0 {
+                                (d.drives as f64 * d.warp_power / d.warp_power_use).min(d.max_warp)
+                            } else {
+                                d.max_warp
+                            };
+                            w * d.warp_efficiency
+                        },
+                        d.w1turn
                     ),
                     format!(
                         "BANKS: {} (chg {} rng {})  TUBES: {} ({})  LAUNCHERS: {} ({})",
