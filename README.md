@@ -70,9 +70,13 @@ identical Rust engine compiled to WebAssembly — the shared
 play, verified byte-for-byte against the native console
 (`tools/wasm_transcript_test.mjs`).
 
-Cross-play: a console player hosts (`begin host`) and browser players
-join with the room code — the page is a dumb terminal for the frames the
-host renders, exactly like `begin join`. Rebuild and redeploy with
+Cross-play, in every direction: anyone can host. A console player hosts
+with `begin host`, or a browser player clicks **Host room** — the same
+`begin::host::HostCore` game loop runs either way (natively or as wasm
+in the hosting tab), and everyone else joins with the room code as a
+bridge console, terminal and browser seats mixed freely. ANSI text
+blink is emulated in the browser (torpedo streaks, destruct countdowns,
+blast asterisks flash like the real thing). Rebuild and redeploy with
 `tools/build_web.sh` (output in `web/dist/`).
 
 ## Multiplayer (peer-to-peer via lobbylink)
