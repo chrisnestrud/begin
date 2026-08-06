@@ -7,11 +7,18 @@ implementation-grade spec with asm line references throughout).
 
 All ship, torpedo, probe and nation data is extracted from the original
 binary (`tools/extract_stats.py` → `crates/begin-core/data/*.json`),
-including the endgame messages, officer rosters and Daniel's binary patches
-(`ooDestructDamage` 14.0; the optional "begin1 feel" phaser/splash profile
-via `--begin1`). Weapon mount counts come from **begin 1.65** (`begin.exe`)
-— begin 2.00 halved most loadouts, but the classic K'tinga battle cruiser
-carries 5 banks and 5 tubes, and that's what you get.
+including the endgame messages and officer rosters. Weapon mount counts
+come from **begin 1.65** (`begin.exe`) — begin 2.00 halved most loadouts,
+but the classic K'tinga battle cruiser carries 5 banks and 5 tubes, and
+that's what you get.
+
+Damage lands the **begin 1.65** way by default: shields absorb at full
+capacity, any hit that gets through at ≥ 50 destroys the ship outright,
+and crew losses are percentage-based — the weapon formulas themselves are
+identical across versions, so no fudge factors are involved. `--begin2`
+selects begin 2.00's damage application instead (quartered shield
+absorption, armour pool, hull integrity, with Daniel's `ooDestructDamage`
+14.0 multiplayer patch).
 
 ## Playing
 
