@@ -37,21 +37,25 @@ fn charge_and_load(g: &mut Game, id: ObjId) {
     let mut pool = o.pool;
     let s = o.ship.as_mut().unwrap();
     for tube in s.tubes.iter_mut() {
-        if tube.sys.destroyed() || tube.fire || !tube.loading_enabled {
+        // ANY tube damage halts loading (1.65 loader; not just destroyed)
+        if tube.sys.dmg > 0 || tube.fire || !tube.loading_enabled {
             continue;
         }
         if tube.loaded.is_some() {
             continue;
         }
-        // charge toward 100%
+        // charge toward 100%: loading draws load_energy over load_cycles
+        // (plasma 400/6!) and accepts partial energy — a poor ship loads
+        // slower instead of stalling (1.65 loader linear 0x872D)
         let step_pct = 100.0 / td.charge_time.max(0.01);
-        // loading draws load_energy over load_cycles (plasma 400/6!)
         let cost = td.load_energy / td.charge_time.max(0.01);
-        if pool < cost {
+        let pay = cost.min(pool.max(0.0));
+        if pay <= 0.0 && cost > 0.0 {
             continue;
         }
-        pool -= cost;
-        tube.charge = (tube.charge + step_pct).min(100.0);
+        pool -= pay;
+        let frac = if cost > 0.0 { pay / cost } else { 1.0 };
+        tube.charge = (tube.charge + step_pct * frac).min(100.0);
         if tube.charge >= 100.0 {
             // load a torpedo with the ordered prox, clamped to the design
             // limits and the global 100-unit floor (flt_318BD, both versions)

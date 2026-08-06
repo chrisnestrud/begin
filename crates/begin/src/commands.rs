@@ -813,6 +813,11 @@ impl<'a> Parser<'a> {
                 for (k, t) in s.tubes.iter_mut().enumerate() {
                     if which.contains(k) {
                         t.loading_enabled = enable;
+                        // stopping a load dumps the accumulated charge (1.65
+                        // state-8 helper linear 0x8888)
+                        if !enable && t.loaded.is_none() {
+                            t.charge = 0.0;
+                        }
                     }
                 }
                 Ok(Outcome::Advance)
