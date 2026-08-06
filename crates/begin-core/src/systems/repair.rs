@@ -1,5 +1,6 @@
 //! Damage control (§11; `sub_D72F` 21416, kernel `sub_F6AE` 24949).
 
+use crate::constants::DamageModel;
 use crate::events::ReportKind;
 use crate::game::Game;
 use crate::object::{ObjId, RepairClass, Sys};
@@ -14,7 +15,11 @@ pub fn repair_step(g: &mut Game) {
     }
 }
 
-fn class_mult(priority: Option<RepairClass>, class: RepairClass) -> f64 {
+fn class_mult(model: DamageModel, priority: Option<RepairClass>, class: RepairClass) -> f64 {
+    // 1.65 has no repair priorities at all
+    if model == DamageModel::V165 {
+        return 1.0;
+    }
     match priority {
         None => 1.0,
         Some(p) if p == class => 4.0,
@@ -52,13 +57,26 @@ fn repair_ship(g: &mut Game, id: ObjId) {
         (s.design, s.docked_to, s.survivors)
     };
     let d = g.data.ships[design_idx].clone();
+    let model = g.tuning.model;
     let e = if let Some(host) = docked_to.filter(|&h| g.get(h).is_some()) {
         let host_design = g.obj(host).ship.as_ref().unwrap().design;
         g.data.ships[host_design].docked_repair_ratio
     } else {
-        survivors as f64 / d.crew.max(1) as f64
+        match model {
+            // 1.65 quantizes: (survivors idiv 10)/(crew idiv 10) — a ship
+            // under 10 survivors never repairs (dispatch linear 0xB4F2)
+            DamageModel::V165 => {
+                (survivors / 10) as f64 / ((d.crew as i32 / 10).max(1)) as f64
+            }
+            DamageModel::V200 => survivors as f64 / d.crew.max(1) as f64,
+        }
     };
-    if e < 0.1 {
+    // minimum efficiency gate: 0.01 in 1.65 (dbl at file 0x234BD), 0.1 in 2.00
+    let min_gate = match model {
+        DamageModel::V165 => 0.01,
+        DamageModel::V200 => 0.1,
+    };
+    if e < min_gate {
         return;
     }
     let docked = docked_to.is_some();
@@ -80,8 +98,16 @@ fn repair_ship(g: &mut Game, id: ObjId) {
             + s.transporters.len()
             + 4
     };
-    let rolls: Vec<(f64, bool)> =
-        (0..n_items).map(|_| (g.rng.range(0.0, 2.0), g.rng.percent(2.0))).collect();
+    // 1.65 progress is deterministic rate x e; 2.00 rolls rand(0, 2 x rate x e)
+    let rolls: Vec<(f64, bool)> = (0..n_items)
+        .map(|_| {
+            let roll = match model {
+                DamageModel::V165 => 1.0,
+                DamageModel::V200 => g.rng.range(0.0, 2.0),
+            };
+            (roll, g.rng.percent(2.0))
+        })
+        .collect();
     let mut completed: Vec<String> = Vec::new();
 
     {
@@ -96,7 +122,7 @@ fn repair_ship(g: &mut Game, id: ObjId) {
                        next: &mut dyn FnMut() -> (f64, bool),
                        completed: &mut Vec<String>| {
             let (roll, gate) = next();
-            if fix_item(sys, rate * class_mult(priority, class) * e, docked, roll, gate) {
+            if fix_item(sys, rate * class_mult(model, priority, class) * e, docked, roll, gate) {
                 completed.push(label);
             }
         };
