@@ -46,9 +46,14 @@ pub fn max_attainable_warp(g: &Game, id: ObjId) -> f64 {
     let o = g.obj(id);
     let Some(s) = o.ship.as_ref() else { return f64::MAX };
     let d = &g.data.ships[s.design];
-    let fallback = match &s.impulse {
-        Some(imp) if !imp.destroyed() => 1.0,
-        _ => 0.0,
+    // 1.65 floors at warp 1 unconditionally (linear 0xC9E3) — impulse
+    // engines and engine-kill are 2.00 additions
+    let fallback = match g.tuning.model {
+        DamageModel::V165 => 1.0,
+        DamageModel::V200 => match &s.impulse {
+            Some(imp) if !imp.destroyed() => 1.0,
+            _ => 0.0,
+        },
     };
     if o.warp_budget <= 0.0 || d.warp_power_use <= 0.0 {
         return fallback;
