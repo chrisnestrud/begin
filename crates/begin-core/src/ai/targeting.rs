@@ -131,35 +131,30 @@ pub fn select_target(g: &mut Game, ctx: &mut Ctx) {
     let old = g.obj(me).ship.as_ref().unwrap().brain.target;
     let new = best.map(|(id, _)| id);
     if new != old {
-        {
+        // sub_1E30D: announce (and cancel phaser/torpedo/probe missions) only
+        // when abandoning a player-ORDERED target; self-chosen flips are silent
+        let ordered = g.obj(me).ship.as_ref().unwrap().brain.target_ordered;
+        if new.is_some() && ordered {
+            if let Some(o) = old.filter(|&o| g.get(o).is_some()) {
+                let old_name = g.obj(o).name.clone();
+                let captain = g.obj(me).ship.as_ref().unwrap().captain.clone();
+                g.say(
+                    Some(ctx.side),
+                    &captain,
+                    format!("Breaking off attack on the {old_name}."),
+                    ReportKind::Ally,
+                );
+            }
             let b = &mut g.obj_mut(me).ship.as_mut().unwrap().brain;
-            b.target = new;
-            if b.target != old {
-                // a self-chosen switch drops the ordered flag and cancels
-                // phaser/torpedo/probe orders aimed at the old target
-                if !matches!(new, Some(n) if b.target_ordered && Some(n) == old) {
-                    b.target_ordered = false;
-                }
-                if matches!(
-                    b.mission,
-                    Some(Mission::Phaser { .. }) | Some(Mission::Torpedo { .. }) | Some(Mission::Probe { .. })
-                ) {
-                    b.mission = None;
-                }
+            b.target_ordered = false;
+            if matches!(
+                b.mission,
+                Some(Mission::Phaser { .. }) | Some(Mission::Torpedo { .. }) | Some(Mission::Probe { .. })
+            ) {
+                b.mission = None;
             }
         }
-        if let Some(t) = new {
-            let tname = g.obj(t).name.clone();
-            let captain = g.obj(me).ship.as_ref().unwrap().captain.clone();
-            let my_name = g.obj(me).name.clone();
-            let side = ctx.side;
-            g.say(
-                Some(side),
-                &captain,
-                format!("{my_name} engaging the {tname}."),
-                ReportKind::Ally,
-            );
-        }
+        g.obj_mut(me).ship.as_mut().unwrap().brain.target = new;
     }
     if let Some(t) = new.filter(|&t| g.get(t).is_some()) {
         ctx.cache_target(g, t);
