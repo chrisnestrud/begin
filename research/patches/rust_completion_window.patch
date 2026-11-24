@@ -1,0 +1,56 @@
+--- a/crates/begin-core/src/cycle.rs
++++ b/crates/begin-core/src/cycle.rs
+@@ -153,7 +153,34 @@
+     /// handled by the front-end).
+     fn check_end(&mut self) {
+         let live = self.live_sides();
++        if let Some(left) = self.completion_cycles_left {
++            if left > 1 {
++                self.completion_cycles_left = Some(left - 1);
++                return;
++            }
++            self.completion_cycles_left = None;
++            self.over = Some(EndState::Over { winner: live.first().copied() });
++            return;
++        }
+         if live.len() <= 1 {
++            // Only the observed two-nation, surviving-local-flagship case.
++            // Other termination predicates retain their baseline policy.
++            let locals: Vec<_> = self.ship_ids().into_iter()
++                .filter(|&id| self.obj(id).control == crate::object::Control::Local)
++                .collect();
++            let mut starting_sides: Vec<_> = self.start_ships.iter().map(|s| s.0).collect();
++            starting_sides.sort_unstable();
++            starting_sides.dedup();
++            if self.tuning.model == crate::constants::DamageModel::V165
++                && starting_sides.len() == 2
++                && locals.len() == 1
++                && self.obj(locals[0]).alive_crew()
++                && live.as_slice() == [self.obj(locals[0]).nation]
++            {
++                // Detection is D0; four subsequent world cycles precede finalization.
++                self.completion_cycles_left = Some(4);
++                return;
++            }
+             self.over = Some(EndState::Over { winner: live.first().copied() });
+         }
+     }
+--- a/crates/begin-core/src/game.rs
++++ b/crates/begin-core/src/game.rs
+@@ -24,6 +24,8 @@
+     /// command spreads fleets beyond scanner range and enables this).
+     pub fog: bool,
+     pub over: Option<EndState>,
++    /// Experimental V165 enemy-elimination window; not a presentation delay.
++    pub(crate) completion_cycles_left: Option<u8>,
+     /// Strength totals at game start, per nation index (endgame rating).
+     pub start_strength: Vec<f64>,
+     /// (nation, ship name) of every ship at game start — survivors roster.
+@@ -44,6 +46,7 @@
+             reporter: Reporter::default(),
+             fog: false,
+             over: None,
++            completion_cycles_left: None,
+             start_strength: vec![0.0; nations],
+             start_ships: Vec::new(),
+             env: crate::env::Environment::default(),

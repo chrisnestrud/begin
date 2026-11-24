@@ -1,0 +1,6 @@
+[workspace]
+resolver="2"
+members=["core","front","probe"]
+[profile.dev]
+debug=0
+incremental=false

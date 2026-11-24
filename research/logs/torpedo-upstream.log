@@ -1,0 +1,88 @@
+   Compiling begin v0.1.0 (verification/torpedo/research/reproduction/front)
+   Compiling begin-core v0.1.0 (verification/torpedo/research/reproduction/core)
+    Finished `test` profile [unoptimized] target(s) in 4.81s
+     Running unittests ../../../crates/begin/src/lib.rs (verification/target-torpedo/debug/build/begin/285bec5487ab432c/out/begin-285bec5487ab432c)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests ../../../crates/begin-core/src/lib.rs (verification/target-torpedo/debug/build/begin-core/d7280ca4e0879240/out/begin_core-d7280ca4e0879240)
+
+running 8 tests
+test data::tests::loads_classic_data ... ok
+test env::kepler::tests::earth_at_one_au ... ok
+test env::kepler::tests::luna_orbits_earth ... ok
+test env::kepler::tests::mars_distance_sane ... ok
+test math::tests::angles ... ok
+test math::tests::bearing_compass_convention ... ok
+test math::tests::dir_matches_bearing ... ok
+test math::tests::rng_shapes ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running ../../../crates/begin-core/tests/aiwatch.rs (verification/target-torpedo/debug/build/begin-core/5d33d614652beabf/out/aiwatch-5d33d614652beabf)
+
+running 1 test
+test watch_ai_duel ... ignored
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running ../../../crates/begin-core/tests/combat.rs (verification/target-torpedo/debug/build/begin-core/4ece1149ccfc1b8e/out/combat-4ece1149ccfc1b8e)
+
+running 17 tests
+test ai_duel_is_competitive_and_resolves ... ok
+test boarding_captures_a_weak_ship ... ok
+test detonate_all_probes_blows_every_active_probe ... ok
+test kinetic_rounds_contact_damage_no_splash ... ok
+test phaser_bombardment_eventually_kills ... ok
+test phaser_damage_falls_off_with_distance ... ok
+test phasers_hit_and_hurt_the_facing_shield ... ok
+test phasers_shoot_down_torpedoes_and_probes ... ok
+test probes_launch_pursue_and_detonate ... ok
+test railguns_hit_instantly_within_cone ... ok
+test repair_fixes_damage_over_time ... ok
+test self_destruct_counts_down_and_blows ... ok
+test torpedo_lead_hits_a_crossing_target ... ok
+test torpedoes_fly_arm_and_detonate_on_prox ... ok
+test tractor_pulls_target_closer ... ok
+test tube_dispersion_fans_the_salvo ... ok
+test v165_merged_salvo_matches_the_dosbox_measurement ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running ../../../crates/begin-core/tests/environment.rs (verification/target-torpedo/debug/build/begin-core/36898d14b5173bab/out/environment-36898d14b5173bab)
+
+running 3 tests
+test flying_into_a_planet_is_fatal ... ok
+test ring_rocks_appear_near_saturn ... ok
+test station_orbits_its_body ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running ../../../crates/begin-core/tests/physics.rs (verification/target-torpedo/debug/build/begin-core/803cab96a213c44d/out/physics-803cab96a213c44d)
+
+running 8 tests
+test flat_out_warp_overheats_and_destroys_drives ... ok
+test instant_helm_below_warp_one ... ok
+test max_warp_impulse_fallback ... ok
+test planar_lock_confines_to_plane ... ok
+test pursue_tracks_out_of_plane ... ok
+test ships_accelerate_and_move ... ok
+test speed_is_100_units_per_warp_per_cycle ... ok
+test turn_rate_scales_with_warp ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+   Doc-tests begin
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests begin_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

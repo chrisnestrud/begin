@@ -1,0 +1,57 @@
+    Finished `test` profile [unoptimized] target(s) in 0.11s
+     Running ../../tests/rust_completion_window.rs (verification/target-baseline/debug/build/v165-handoff-checks/c1a81e35813251f1/out/completion_window-c1a81e35813251f1)
+
+running 5 tests
+test ordinary_nonterminal_commands_keep_their_turn_policy ... ok
+test unvalidated_player_loss_and_multiside_keep_baseline_policy ... ok
+test v165_completion_allows_four_more_world_steps_and_status_queries ... FAILED
+test v165_session_defers_evaluation_and_done_until_fourth_additional_order ... FAILED
+test v200_still_ends_on_first_check_and_freezes ... ok
+
+failures:
+
+---- v165_completion_allows_four_more_world_steps_and_status_queries stdout ----
+
+thread 'v165_completion_allows_four_more_world_steps_and_status_queries' (10) panicked at probe/../../tests/rust_completion_window.rs:89:5:
+D0 must leave a playable pending window
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- v165_session_defers_evaluation_and_done_until_fourth_additional_order stdout ----
+
+thread 'v165_session_defers_evaluation_and_done_until_fourth_additional_order' (11) panicked at probe/../../tests/rust_completion_window.rs:119:5:
+assertion failed: !out.iter().any(|o| matches!(o, Out::Hold(_) | Out::Done))
+
+
+failures:
+    v165_completion_allows_four_more_world_steps_and_status_queries
+    v165_session_defers_evaluation_and_done_until_fourth_additional_order
+
+test result: FAILED. 3 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+error: test failed, to rerun pass `-p v165-handoff-checks --test completion_window`
+     Running ../../tests/rust_torpedo_turn.rs (verification/target-baseline/debug/build/v165-handoff-checks/c6b5041de33be8c2/out/torpedo_turn-c6b5041de33be8c2)
+
+running 4 tests
+test information_bad_commands_and_missing_arguments_keep_their_policy ... ok
+test loaded_aliases_arm_six_tubes_and_consume_one_turn_in_both_models ... ok
+test v165_no_ready_order_advances_once_without_arming_or_spawning_a_shot ... FAILED
+test v200_no_ready_order_stays_and_does_not_arm_a_shot ... ok
+
+failures:
+
+---- v165_no_ready_order_advances_once_without_arming_or_spawning_a_shot stdout ----
+
+thread 'v165_no_ready_order_advances_once_without_arming_or_spawning_a_shot' (16) panicked at probe/../../tests/rust_torpedo_turn.rs:74:9:
+recognized V165 no-ready order must consume one turn: fire all torps
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    v165_no_ready_order_advances_once_without_arming_or_spawning_a_shot
+
+test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+error: test failed, to rerun pass `-p v165-handoff-checks --test torpedo_turn`
+error: 2 targets failed:
+    `-p v165-handoff-checks --test completion_window`
+    `-p v165-handoff-checks --test torpedo_turn`

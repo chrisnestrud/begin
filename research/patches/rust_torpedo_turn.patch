@@ -1,0 +1,19 @@
+--- a/crates/begin/src/commands.rs
++++ b/crates/begin/src/commands.rs
+@@ -539,7 +539,15 @@
+         let which = self.mounts();
+         let n = orders::fire_torpedoes(self.g, self.me, &which);
+         if n == 0 {
+-            return Err("No loaded tubes ready to fire.".into());
++            let message = "No loaded tubes ready to fire.";
++            let selects_tube = self.g.obj(self.me).ship.as_ref().unwrap().tubes
++                .iter().enumerate().any(|(k, _)| which.contains(k));
++            if self.g.tuning.model == begin_core::constants::DamageModel::V165 && selects_tube {
++                // A recognized unsuccessful V165 firing order still consumes a turn.
++                self.disp.push(Line::new(format!("{RED}{message}{RESET}"), message.chars().count()));
++                return Ok(Outcome::Advance);
++            }
++            return Err(message.into());
+         }
+         Ok(Outcome::Advance)
+     }

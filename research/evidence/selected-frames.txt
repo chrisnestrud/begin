@@ -1,0 +1,296 @@
+FRAME 041 — input: pursue Nova 1
+Spock: Nova firing 4 phasers.                        ╔════════════════════════╗
+Scott: 3 hits on shield 6!                           ║                        ║
+Chekov: Nova's shield 6 hit.                         ║                        ║
+        2 hits on Nova's hull.                       ║                        ║
+                                                     ║                        ║
+                WARP COURSE BEARING RANGE MARK CLASS ║                        ║
+       Trenton:  1.0    56° Pursuing Nova            ║           Φ            ║
+          Nova:  2.0   235°   235°    172 178°  ES   ║     ··                 ║
+                                                     ║                        ║
+Tranche: Order pursue Nova 1                         ║                        ║
+Sulu: Coming to course 235 point 12.                 ║                        ║
+                                                     ║                        ║
+                WARP COURSE BEARING RANGE MARK CLASS ╟────────────────────────╢
+       Trenton:  1.0   235° Pursuing Nova            ║  Scanning range: 25000 ║
+          Nova:  2.0    52°    51°    130 176°  ES   ╚════════════════════════╝
+
+Tranche: Order pursue Nova 1                         ╔════════════════════════╗
+Sulu: Coming to course 51 point 44.                  ║     SYSTEMS STATUS     ║
+Spock: Nova launching 1 probe.                       ╟────────────────────────╢
+                                                     ║   Banks:     ====      ║
+                WARP COURSE BEARING RANGE MARK CLASS ║   Tubes:     ≡≡≡≡≡≡    ║
+       Trenton:  1.0    51° Pursuing Nova            ║   Launchers: ...       ║
+          Nova:  2.0   230°   229°    171 178°  ES   ║   Shields:   ▒███▓▓    ║
+                                                     ║   Drives:    ░░        ║
+Tranche: Order                                       ╚════════════════════════╝
+
+FRAME 042 — input: fire all torps
+          Nova:  2.0   235°   235°    172 178°  ES   ╔════════════════════════╗
+                                                     ║                        ║
+Tranche: Order pursue Nova 1                         ║                        ║
+Sulu: Coming to course 235 point 12.                 ║                        ║
+                                                     ║                        ║
+                WARP COURSE BEARING RANGE MARK CLASS ║                        ║
+       Trenton:  1.0   235° Pursuing Nova            ║           Φ            ║
+          Nova:  2.0    52°    51°    130 176°  ES   ║                        ║
+                                                     ║     ··                 ║
+Tranche: Order pursue Nova 1                         ║                        ║
+Sulu: Coming to course 51 point 44.                  ║                        ║
+Spock: Nova launching 1 probe.                       ║                        ║
+                                                     ╟────────────────────────╢
+                WARP COURSE BEARING RANGE MARK CLASS ║  Scanning range: 25000 ║
+       Trenton:  1.0    51° Pursuing Nova            ╚════════════════════════╝
+          Nova:  2.0   230°   229°    171 178°  ES
+                                                     ╔════════════════════════╗
+Tranche: Order fire all torps                        ║     SYSTEMS STATUS     ║
+Scott: Tubes 1, 2, 3, 4, 5 and 6 unable to fire!     ╟────────────────────────╢
+                                                     ║   Banks:     ≡≡≡≡      ║
+                WARP COURSE BEARING RANGE MARK CLASS ║   Tubes:     °°°°°°    ║
+       Trenton:  1.0   229° Pursuing Nova            ║   Launchers: ...       ║
+          Nova:  2.0    47°    46°    131 176°  ES   ║   Shields:   ▓███▓▓    ║
+                                                     ║   Drives:    ░░        ║
+Tranche: Order                                       ╚════════════════════════╝
+
+FRAME 068 — input: pursue Nova 4
+OTHER POWER:    225                                  ╔════════════════════════╗
+RESIDUAL POWER: +68                                  ║                        ║
+                                                     ║                        ║
+Tranche: Order pursue Nova 4                         ║                        ║
+Sulu: Coming to course 208 point 15.                 ║                        ║
+                                                     ║                        ║
+                WARP COURSE BEARING RANGE MARK CLASS ║           No           ║
+       Trenton:  4.0  208° Pursuing Nova            ║                        ║
+          Nova:  4.7   205°   206°    573 358°  ES   ║                        ║
+                                                     ║                        ║
+Tranche: Order pursue Nova 4                         ║                        ║
+Sulu: Coming to course 206 point 37.                 ║                        ║
+                                                     ╟────────────────────────╢
+                WARP COURSE BEARING RANGE MARK CLASS ║  Scanning range: 25000 ║
+       Trenton:  4.0   206° Pursuing Nova            ╚════════════════════════╝
+          Nova:  4.2  229°   222°    582  16°  ES
+                                                     ╔════════════════════════╗
+Tranche: Order pursue Nova 4                         ║     SYSTEMS STATUS     ║
+Sulu: Coming to course 222 point 77.                 ╟────────────────────────╢
+                                                     ║   Banks:     ≡≡≡≡      ║
+                WARP COURSE BEARING RANGE MARK CLASS ║   Tubes:     °°°°°°    ║
+       Trenton:  4.0   222° Pursuing Nova            ║   Launchers: ...       ║
+          Nova:  4.2   229°   227°    599   4°  ES   ║   Shields:   ▒████▓    ║
+                                                     ║   Drives:    ░░        ║
+Tranche: Order                                       ╚════════════════════════╝
+
+FRAME 069 — input: fire all phasers spread 10
+Sulu: Coming to course 206 point 37.                 ╔════════════════════════╗
+                                                     ║                        ║
+                WARP COURSE BEARING RANGE MARK CLASS ║                        ║
+       Trenton:  4.0   206° Pursuing Nova            ║                        ║
+          Nova:  4.2  229°   222°    582  16°  ES   ║                        ║
+                                                     ║                        ║
+Tranche: Order pursue Nova 4                         ║           No           ║
+Sulu: Coming to course 222 point 77.                 ║                        ║
+                                                     ║                        ║
+                WARP COURSE BEARING RANGE MARK CLASS ║                        ║
+       Trenton:  4.0   222° Pursuing Nova            ║                        ║
+          Nova:  4.2   229°   227°    599   4°  ES   ║                        ║
+                                                     ╟────────────────────────╢
+Tranche: Order fire all phasers spread 10            ║  Scanning range: 25000 ║
+Chekov: Firing 4 phasers!                            ╚════════════════════════╝
+        Nova's shield 6 hit.
+        4 hits on Nova's hull.                       ╔════════════════════════╗
+Computer: Transmitting results of simulation to      ║     SYSTEMS STATUS     ║
+          Starfleet Command.                         ╟────────────────────────╢
+                                                     ║   Banks:     ....      ║
+                WARP COURSE BEARING RANGE MARK CLASS ║   Tubes:     °°°°°°    ║
+       Trenton:  4.0   227° Pursuing Nova            ║   Launchers: ...       ║
+         Nova:  4.2   210°   215°    612 348°  ES   ║   Shields:   ▒████▓    ║
+                                                     ║   Drives:    ░░        ║
+Tranche: Order                                       ╚════════════════════════╝
+
+FRAME 070 — input: scan Nova
+                                                     ╔════════════════════════╗
+                WARP COURSE BEARING RANGE MARK CLASS ║                        ║
+       Trenton:  4.0   227° Pursuing Nova            ║                        ║
+         Nova:  4.2   210°   215°    612 348°  ES   ║                        ║
+                                                     ║                        ║
+Tranche: Order scan Nova                             ║                        ║
+                                                     ║           No           ║
+SHIP NAME: Nova                                      ║                        ║
+CLASS:     Escort                                    ║                        ║
+SURVIVORS: 0                                         ║                        ║
+                                                     ║                        ║
+REACTORS:    XX   XX                                 ║                        ║
+BATTERIES:   75   75   XX   XX   51   XX             ╟────────────────────────╢
+BANKS:       XX   XX   XX   XX                       ║  Scanning range: 25000 ║
+TUBES:       XX                                      ╚════════════════════════╝
+LAUNCHERS:   XX
+SHIELDS:     XX   67%  90%  63%   5%   0%            ╔════════════════════════╗
+WARP:        63%  82%                                ║     SYSTEMS STATUS     ║
+WARP TEMP:   12m  12m  LIMIT: 40m                    ╟────────────────────────╢
+                                                     ║   Banks:     ....      ║
+WARP POWER:     181                                  ║   Tubes:     °°°°°°    ║
+OTHER POWER:    201                                  ║   Launchers: ...       ║
+RESIDUAL POWER: -5                                   ║   Shields:   ▒████▓    ║
+                                                     ║   Drives:    ░░        ║
+Tranche: Order                                       ╚════════════════════════╝
+
+FRAME 071 — input: report
+REACTORS:    XX   XX                                 ╔════════════════════════╗
+BATTERIES:   75   75   XX   XX   51   XX             ║                        ║
+BANKS:       XX   XX   XX   XX                       ║                        ║
+TUBES:       XX                                      ║                        ║
+LAUNCHERS:   XX                                      ║                        ║
+SHIELDS:     XX   67%  90%  63%   5%   0%            ║                        ║
+WARP:        63%  82%                                ║           No           ║
+WARP TEMP:   12m  12m  LIMIT: 40m                    ║                        ║
+                                                     ║                        ║
+WARP POWER:     181                                  ║                        ║
+OTHER POWER:    201                                  ║                        ║
+RESIDUAL POWER: -5                                   ║                        ║
+                                                     ╟────────────────────────╢
+Tranche: Order report                                ║  Scanning range: 25000 ║
+                                                     ╚════════════════════════╝
+SHIP NAME: Trenton
+CLASS:     Heavy Cruiser                             ╔════════════════════════╗
+SURVIVORS: 450                                       ║     SYSTEMS STATUS     ║
+                                                     ╟────────────────────────╢
+CONDITION: 100% Functional                           ║   Banks:     ....      ║
+NAVCOM:    Pursuing Nova                             ║   Tubes:     °°°°°°    ║
+COURSE:    227° desired   227° current               ║   Launchers: ...       ║
+WARP:      4.0 desired   4.0 current                 ║   Shields:   ▒████▓    ║
+                                                     ║   Drives:    ░░        ║
+Tranche: Order                                       ╚════════════════════════╝
+
+FRAME 072 — input: status damage
+                                                     ╔════════════════════════╗
+SHIP NAME: Trenton                                   ║                        ║
+CLASS:     Heavy Cruiser                             ║                        ║
+SURVIVORS: 450                                       ║                        ║
+                                                     ║                        ║
+REACTORS:   100% 100% 100% 100% 100% 100% 100%       ║                        ║
+BATTERIES:   90   90   90   90   90   90             ║           No           ║
+BANKS:       ..   ..   ..   ..                       ║                        ║
+TUBES:       ld   ld   ld   ld   ld   ld             ║                        ║
+LAUNCHERS:   ..   ..   ..                            ║                        ║
+SHIELDS:     61% 100% 100% 100%  93%  80%            ║                        ║
+WARP:       100% 100%                                ║                        ║
+WARP TEMP:  13m 13m  LIMIT: 40m                    ╟────────────────────────╢
+                                                     ║  Scanning range: 25000 ║
+WARP POWER:     570                                  ╚════════════════════════╝
+OTHER POWER:    785
+RESIDUAL POWER: +208                                 ╔════════════════════════╗
+                                                     ║     SYSTEMS STATUS     ║
+DAMAGE CONTROL: 100% efficiency                      ╟────────────────────────╢
+                                                     ║   Banks:     ....      ║
+REPAIR PER CYCLE:                                    ║   Tubes:     °°°°°°    ║
+REACTOR BATTERY BANK  TUBE  LAUNCHER SHIELD DRIVE    ║   Launchers: ...       ║
+ 1.00%   1.20%  0.60% 0.40%   0.80%   0.40% 0.20%    ║   Shields:   ▒████▓    ║
+                                                     ║   Drives:    ░░        ║
+Tranche: Order                                       ╚════════════════════════╝
+
+FRAME 073 — input: helm 0 0
+BANKS:       ..   ..   ..   ..                       ╔════════════════════════╗
+TUBES:       ld   ld   ld   ld   ld   ld             ║                        ║
+LAUNCHERS:   ..   ..   ..                            ║                        ║
+SHIELDS:     61% 100% 100% 100%  93%  80%            ║                        ║
+WARP:       100% 100%                                ║                        ║
+WARP TEMP:  13m 13m  LIMIT: 40m                    ║                        ║
+                                                     ║           No           ║
+WARP POWER:     570                                  ║                        ║
+OTHER POWER:    785                                  ║                        ║
+RESIDUAL POWER: +208                                 ║                        ║
+                                                     ║                        ║
+DAMAGE CONTROL: 100% efficiency                      ║                        ║
+                                                     ╟────────────────────────╢
+REPAIR PER CYCLE:                                    ║  Scanning range: 25000 ║
+REACTOR BATTERY BANK  TUBE  LAUNCHER SHIELD DRIVE    ╚════════════════════════╝
+ 1.00%   1.20%  0.60% 0.40%   0.80%   0.40% 0.20%
+                                                     ╔════════════════════════╗
+Tranche: Order helm 0 0                              ║     SYSTEMS STATUS     ║
+Sulu: Coming to course 0.                            ╟────────────────────────╢
+                                                     ║   Banks:     ----      ║
+                WARP COURSE BEARING RANGE MARK CLASS ║   Tubes:     °°°°°°    ║
+       Trenton:  1.0    0° Manual helm              ║   Launchers: ...       ║
+         Nova:  4.2   210°   210°   1114 210°  ES   ║   Shields:   ▓████▓    ║
+                                                     ║   Drives:    ░░        ║
+Tranche: Order                                       ╚════════════════════════╝
+
+FRAME 074 — input: helm 0 0
+WARP POWER:     570                                  ╔════════════════════════╗
+OTHER POWER:    785                                  ║                        ║
+RESIDUAL POWER: +208                                 ║                        ║
+                                                     ║                        ║
+DAMAGE CONTROL: 100% efficiency                      ║                        ║
+                                                     ║                        ║
+REPAIR PER CYCLE:                                    ║           No           ║
+REACTOR BATTERY BANK  TUBE  LAUNCHER SHIELD DRIVE    ║                        ║
+ 1.00%   1.20%  0.60% 0.40%   0.80%   0.40% 0.20%    ║                        ║
+                                                     ║                        ║
+Tranche: Order helm 0 0                              ║                        ║
+Sulu: Coming to course 0.                            ║                        ║
+                                                     ╟────────────────────────╢
+                WARP COURSE BEARING RANGE MARK CLASS ║  Scanning range: 25000 ║
+       Trenton:  1.0    0° Manual helm              ╚════════════════════════╝
+         Nova:  4.2   210°   210°   1114 210°  ES
+                                                     ╔════════════════════════╗
+Tranche: Order helm 0 0                              ║     SYSTEMS STATUS     ║
+Sulu: Coming to course 0.                            ╟────────────────────────╢
+                                                     ║   Banks:     ====      ║
+                WARP COURSE BEARING RANGE MARK CLASS ║   Tubes:     °°°°°°    ║
+       Trenton:  0.0    0° Manual helm              ║   Launchers: ...       ║
+         Nova:  4.2   210°   210°   1532 210°  ES   ║   Shields:   ▓█████    ║
+                                                     ║   Drives:    ░░        ║
+Tranche: Order                                       ╚════════════════════════╝
+
+FRAME 075 — input: helm 0 0
+REACTOR BATTERY BANK  TUBE  LAUNCHER SHIELD DRIVE    ╔════════════════════════╗
+ 1.00%   1.20%  0.60% 0.40%   0.80%   0.40% 0.20%    ║                        ║
+                                                     ║                        ║
+Tranche: Order helm 0 0                              ║                        ║
+Sulu: Coming to course 0.                            ║                        ║
+                                                     ║                        ║
+                WARP COURSE BEARING RANGE MARK CLASS ║           No           ║
+       Trenton:  1.0    0° Manual helm              ║                        ║
+         Nova:  4.2   210°   210°   1114 210°  ES   ║                        ║
+                                                     ║                        ║
+Tranche: Order helm 0 0                              ║                        ║
+Sulu: Coming to course 0.                            ║                        ║
+                                                     ╟────────────────────────╢
+                WARP COURSE BEARING RANGE MARK CLASS ║  Scanning range: 25000 ║
+       Trenton:  0.0    0° Manual helm              ╚════════════════════════╝
+         Nova:  4.2   210°   210°   1532 210°  ES
+                                                     ╔════════════════════════╗
+Tranche: Order helm 0 0                              ║     SYSTEMS STATUS     ║
+Sulu: Coming to course 0.                            ╟────────────────────────╢
+                                                     ║   Banks:     ≡≡≡≡      ║
+                WARP COURSE BEARING RANGE MARK CLASS ║   Tubes:     °°°°°°    ║
+       Trenton:  0.0     0° Manual helm              ║   Launchers: ...       ║
+         Nova:  4.2   210°   210°   1950 210°  ES   ║   Shields:   ▓█████    ║
+                                                     ║   Drives:    ░░        ║
+Tranche: Order                                       ╚════════════════════════╝
+
+FRAME 076 — input: helm 0 0
+Tranche: Order helm 0 0                              ╔════════════════════════╗
+Sulu: Coming to course 0.                            ║                        ║
+                                                     ║                        ║
+                WARP COURSE BEARING RANGE MARK CLASS ║                        ║
+       Trenton:  1.0    0° Manual helm              ║                        ║
+         Nova:  4.2   210°   210°   1114 210°  ES   ║                        ║
+                                                     ║           No           ║
+Tranche: Order helm 0 0                              ║                        ║
+Sulu: Coming to course 0.                            ║                        ║
+                                                     ║                        ║
+                WARP COURSE BEARING RANGE MARK CLASS ║                        ║
+       Trenton:  0.0    0° Manual helm              ║                        ║
+         Nova:  4.2   210°   210°   1532 210°  ES   ╟────────────────────────╢
+                                                     ║  Scanning range: 25000 ║
+Tranche: Order helm 0 0                              ╚════════════════════════╝
+Sulu: Coming to course 0.
+                                                     ╔════════════════════════╗
+                WARP COURSE BEARING RANGE MARK CLASS ║     SYSTEMS STATUS     ║
+       Trenton:  0.0     0° Manual helm              ╟────────────────────────╢
+         Nova:  4.2   210°   210°   1950 210°  ES   ║   Banks:     ≡≡≡≡      ║
+                                                     ║   Tubes:     °°°°°°    ║
+Tranche: Order helm 0 0                              ║   Launchers: ...       ║
+Sulu: Coming to course 0.                            ║   Shields:   ▓█████    ║
+Computer: Simulation complete.                       ║   Drives:    ░░        ║
+                                                     ╚════════════════════════╝

@@ -1,0 +1,25 @@
+   Compiling proc-macro2 v1.0.106
+   Compiling quote v1.0.46
+   Compiling unicode-ident v1.0.24
+   Compiling serde_core v1.0.228
+   Compiling zmij v1.0.21
+   Compiling syn v2.0.118
+   Compiling serde v1.0.228
+   Compiling serde_json v1.0.150
+   Compiling serde_derive v1.0.228
+   Compiling itoa v1.0.18
+   Compiling memchr v2.8.3
+   Compiling begin-core v0.1.0 (verification/torpedo/research/reproduction/core)
+   Compiling begin v0.1.0 (verification/torpedo/research/reproduction/front)
+   Compiling v165-handoff-checks v0.0.0 (verification/torpedo/research/reproduction/probe)
+    Finished `test` profile [unoptimized] target(s) in 15.78s
+     Running ../../tests/rust_torpedo_turn.rs (verification/target-torpedo/debug/build/v165-handoff-checks/c6b5041de33be8c2/out/torpedo_turn-c6b5041de33be8c2)
+
+running 4 tests
+test information_bad_commands_and_missing_arguments_keep_their_policy ... ok
+test loaded_aliases_arm_six_tubes_and_consume_one_turn_in_both_models ... ok
+test v165_no_ready_order_advances_once_without_arming_or_spawning_a_shot ... ok
+test v200_no_ready_order_stays_and_does_not_arm_a_shot ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+

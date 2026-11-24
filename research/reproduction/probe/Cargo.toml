@@ -1,0 +1,14 @@
+[package]
+name="v165-handoff-checks"
+version="0.0.0"
+edition="2021"
+[dependencies]
+begin={path="../front",default-features=false}
+begin-core={path="../core"}
+serde_json="=1.0.150"
+[[test]]
+name="torpedo_turn"
+path="../../tests/rust_torpedo_turn.rs"
+[[test]]
+name="completion_window"
+path="../../tests/rust_completion_window.rs"

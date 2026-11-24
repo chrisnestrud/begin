@@ -1,0 +1,12 @@
+[package]
+name="begin"
+version="0.1.0"
+edition="2021"
+[lib]
+path="../../../crates/begin/src/lib.rs"
+[features]
+default=[]
+net=[]
+[dependencies]
+begin-core={path="../core"}
+serde_json="=1.0.150"
